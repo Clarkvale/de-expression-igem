@@ -11,7 +11,7 @@ if (length(gset) > 1) idx <- grep("GPL2529", attr(gset, "names")) else idx <- 1
 #if not just take the expressionSet object
 gset <- gset[[idx]]
 
-#take a look into the dataset, the 
+#take a look into the datase
 head(gset)
 View(gset)
 dim(gset)
@@ -38,6 +38,7 @@ labels <- c("g","s")
 
 # log2 transform
 ex <- exprs(gset)
+#this checks if the data is log-transformed
 qx <- as.numeric(quantile(ex, c(0., 0.25, 0.5, 0.75, 0.99, 1.0), na.rm=T))
 LogC <- (qx[5] > 100) ||
   (qx[6]-qx[1] > 50 && qx[2] > 0) ||
@@ -57,9 +58,9 @@ cont.matrix <- makeContrasts(G1-G0, levels=design)
 fit2 <- contrasts.fit(fit, cont.matrix)
 fit2 <- eBayes(fit2, 0.01)
 
-#this is the default GEO2R parameters
 
-tT <- topTable(fit2, adjust="fdr", sort.by="B", number = 250)
+#pulling the whole microarray dataset and ordering by B value 
+tT <- topTable(fit2, adjust="fdr", sort.by="B", number = length(fit2[[1]]))
 
 #We can get rid of the "number" argument and replace it with lfc = 2 for a log2 fold change of 2
 #tT <- topTable(fit2, adjust="fdr", sort.by="B", lfc = 2)
