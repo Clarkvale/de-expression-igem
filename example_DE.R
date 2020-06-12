@@ -65,12 +65,12 @@ tT <- topTable(fit2, adjust="fdr", sort.by="B", number = length(fit2[[1]]))
 #We can get rid of the "number" argument and replace it with lfc = 2 for a log2 fold change of 2
 #tT <- topTable(fit2, adjust="fdr", sort.by="B", lfc = 2)
 
-tT <- subset(tT, select=c("ID","adj.P.Val","P.Value","t","B","logFC","Gene.symbol","Gene.title"))
+tT <- subset(tT, select=c("adj.P.Val","P.Value","t","B","logFC","Gene.symbol","Platform_ORF","Gene.title","GO.Function","GO.Process", "GO.Component","Chromosome.annotation"))
 
 #View the final DE expression table
 View(tT)
 
-write.table(tT, file = "example_gene_table.csv", row.names = FALSE, sep = ",")
+write.table(tT, file = "GSE4136_YEAST_EXAMPLE_DE.csv", row.names = FALSE, sep = ",")
 
 
 

@@ -8,7 +8,7 @@ BiocManager::install()
 BiocManager::install("GEOquery")
 BiocManager::install("Biobase")
 BiocManager::install("limma")
-
+BiocManager::install("edgeR")
 
 
 
