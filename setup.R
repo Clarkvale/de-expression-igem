@@ -11,6 +11,10 @@ BiocManager::install("limma")
 BiocManager::install("edgeR")
 
 
+install.packages("devtools")
+library(devtools)
+devtools::install_github("aryoda/R_enumerations@v0.3.0-beta")
+
 
 
 
