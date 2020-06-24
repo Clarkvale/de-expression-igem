@@ -13,7 +13,7 @@ gse <- list.gse[[1]]
 
 #take a look into the dataset
 #head(gse)
-#View(gse$title)
+View(gse$title)
 #dim(gse)
 
 #here we format the feature names. fvarLabels belongs the biobase package and is used to extract features from ExpressionSet Objects
