@@ -1,4 +1,4 @@
-[1] "ORGANISM: Saccharomyces cerevisiae"
+[1] "ORGANISM: Saccharomyces cerevisiae BY4743"
 [1] "MICROGRAVITY TYPE: HARV"
 Experiment data
   Experimenter name: Kate,,McInnerney 
