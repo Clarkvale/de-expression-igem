@@ -15,24 +15,28 @@ logcheck <- function(expression_matrix){
   
 }
 
-extractMetaData <- function(gse_groups, filename, microgravity_type){
+extractMetaData <- function(gse_groups, filename, microgravity_type, metaLabels, strain = ""){
   if(!is(microgravity_type, "character")){
     e <- simpleError("Not a valid microgravity type")
     stop(e)
   }
   
-
   
   org <- gse_groups[[1]]$GSE$organism_ch1[[1]]
+  if(strain != ""){
+    org <- paste(org, strain, sep = " ")
+  }
+  
+  
   
   
   #wipe datatable if exists
-  write.table(data.frame(), paste(filename, ".csv", sep = ""), append = FALSE)
+  #write.table(data.frame(), paste(filename, ".csv", sep = ""), append = FALSE)
   for(i in 1:length(gse_groups)){
    gsms <- gse_groups[[i]]$GSE$geo_accession
    titles <- gse_groups[[i]]$GSE$title
    descriptions <- gse_groups[[i]]$GSE$description
-   write.csv(data.frame(accesssions = gsms, treatment = titles, description = descriptions), paste(filename, ".csv", sep = ""), append = TRUE )
+   write.csv(data.frame(accesssions = gsms, treatment = titles, description = descriptions), paste(filename, "_" ,metaLabels[[i]], ".csv", sep = ""), append = FALSE )
   }
 
   #clean the directory

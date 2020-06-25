@@ -6,19 +6,14 @@ library(GEOquery)
 library(Biobase)
 library(limma)
 source("microarray_functions.R")
-
 #This pulls the all the samples from the microarry dataset. This returns a list containing a single expressionSet object. 
 list.gse <- getGEO("GSE4136", GSEMatrix =TRUE, AnnotGPL=TRUE)
 
-#if there are multiple datasets just take the GPL file  
-if (length(list.gse) > 1) idx <- grep("GPL2529", attr(list.gse, "names")) else idx <- 1
+gse <- list.gse[[1]]
 
-#if not just take the expressionSet object
-gse <- list.gse[[idx]]
-
-#take a look into the datase
+#take a look into the dataset
 #head(gse)
-#View(gse)
+View(gse$title)
 #dim(gse)
 
 #here we format the feature names. fvarLabels belongs the biobase package and is used to extract features from ExpressionSet Objects
@@ -35,7 +30,6 @@ gen5name <- "datasets/GSE4136_Scer/GSE4136_5thGen.csv"
 write.table(gen5$TopTable, gen5name, row.names = FALSE, sep = ",")
 
 
-metaName <- "datasets/GSE4136_Scer/GSE4136_meta"
 
 #25th gen groups
 control <- c(4,5,6)
@@ -47,8 +41,12 @@ write.table(gen25$TopTable, gen25name, row.names = FALSE, sep = ",")
 
 
 #process and extract metadata for all datasets comparisons
+
+metaName <- "datasets/GSE4136_Scer/GSE4136_meta"
+strain <- "BY4743"
 gse_list <- list(gen5,gen25)
-extractMetaData(filename = metaName, gse_groups = gse_list, microgravity_type = M.TYPE$HARV)
+labels <- c("5thGen", "25thGen")
+extractMetaData(filename = metaName, gse_groups = gse_list, microgravity_type = M.TYPE$HARV, metaLabels = labels, strain = strain)
 
 
 
