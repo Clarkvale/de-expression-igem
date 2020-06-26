@@ -2,6 +2,7 @@
 #Benjamin Clark
 
 library(enumerations)
+library(arrayQualityMetrics)
 M.TYPE <- create.enum(c("HARV","RPM","HYPERBOLIC","SPACEFLOWN"))
 
 logcheck <- function(expression_matrix){
@@ -87,7 +88,7 @@ de.analysis <- function(microgravity_group, ground_group, gse){
   
   # set up the data and proceed with analysis
   #sml <- paste("G_", groups_repr, sep="")    # set group names
-  gse$description <- fl
+  filtered.gse$description <- fl
   design <- model.matrix(~ description + 0, filtered.gse)
   colnames(design) <- levels(fl)
   fit <- lmFit(filtered.gse, design)
@@ -108,3 +109,12 @@ de.analysis <- function(microgravity_group, ground_group, gse){
   return(out.list)
   
 } 
+
+remove.controls <- function(topTable){
+  failed.probes <- which(topTable$Platform_ORF == "")
+  passed.probes <- which(topTable$Platform_ORF != "")
+  f.topTable <- topTable[passed.probes,]
+  return(list(TopTable = f.topTable, failed.probes = failed.probes))
+}
+
+
