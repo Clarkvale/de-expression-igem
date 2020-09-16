@@ -1,0 +1,166 @@
+---
+title: "Yeast Simulated Microgravity Metastudy"
+author: "Benjamin Clark"
+date: "August 6, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Meta-analysis of Yeast Simulated Microgravity Transcriptomics Experiments
+
+First we need to pull our data from GEO and run differential expression analysis with limma
+
+```{r include = TRUE, message = FALSE, warning = FALSE} 
+library(GEOquery)
+library(Biobase)
+library(limma)
+library(FoldGO)
+library(MetaVolcanoR)
+source("metastudy_functions.R")
+
+
+sim_gse <- getGEO("GSE4136", GSEMatrix =TRUE, AnnotGPL=TRUE)[[1]]
+harv_gse <- getGEO("GSE64468", GSEMatrix =TRUE, AnnotGPL=TRUE)[[1]]
+#calb_space <-
+#
+control <- c(4,5,6)
+treatment <- c(10,11,12)
+
+gen25 <- de.analysis.1ch(gse = sim_gse, microgravity_group = treatment, ground_group = control)
+fgen25_rpm <- remove.controls(gen25$TopTable)
+
+
+control <- c(1,2,3)
+treatment <- c(7,8,9)
+gen5 <- de.analysis.1ch(gse = sim_gse, microgravity_group = treatment, ground_group = control)
+fgen5_rpm <- remove.controls(gen5$TopTable)
+
+control <- c(1,2,3)
+treatment <- c(4,5,6)
+harv <- de.analysis.1ch(microgravity_group = treatment, ground_group = control, gse = harv_gse)
+fharv <- remove.controls(harv$TopTable)
+
+diffList <- list(RPM.25 = pull.relevant.columns(fgen25_rpm$TopTable),
+                 RPM.5 = pull.relevant.columns(fgen5_rpm$TopTable),
+                 HARV = pull.relevant.columns(fharv$TopTable)
+                )
+
+
+```
+
+## Combining P-values using Fisher's method
+```{r}
+
+meta_degs_comb <- combining_mv(diffexp=diffList,
+                   pcriteria='pvalue', 
+                   foldchangecol='Log2FC',
+                   genenamecol='Symbol',
+                   geneidcol=NULL,
+                   metafc='Median',
+                   metathr=0.01, 
+                   collaps=TRUE,
+                   jobname="MetaVolcano",
+                   outputfolder=".",
+                   draw='HTML')
+
+head(meta_degs_comb@metaresult)
+
+meta_degs_comb@MetaVolcano
+
+```
+
+
+##Random effects modeling of p-values 
+Random Effects Model Approach For Summarizing InterStudy P-values. The Volcano plot below shows the summary p-values for both upregulated and down-regulated genes.
+
+```{r warning = FALSE}
+
+
+meta_degs_rem <- rem_mv(diffexp=diffList,
+                        pcriteria="pvalue",
+                        foldchangecol='Log2FC', 
+                        genenamecol='Symbol',
+                        geneidcol=NULL,
+                        collaps=TRUE,
+                        llcol='CI.L',
+                        rlcol='CI.R',
+                        vcol=NULL, 
+                        cvar=TRUE,
+                        metathr=0.01,
+                        jobname="microgravity-yeast-metastudy-volcano-plot",
+                        outputfolder=".", 
+                        draw= "HTML",
+                        ncores=1)
+
+meta_degs_rem@MetaVolcano
+
+
+head(meta_degs_rem@metaresult)
+
+
+
+
+```
+
+
+
+Now I'm going to take the first 250 gene symbols from the Fisher's p-value combination algo and map them to their respective logfc values for each study and display the results.
+
+```{r echo = FALSE, warning=FALSE}
+library(ggplot2)
+suppressPackageStartupMessages(library(ComplexHeatmap))
+
+get_median_dups <- function(gene.id, topTable){
+  
+}
+
+pull_meta_fc <- function(num, topTable){
+  sym <- meta_degs_comb@metaresult$Symbol[1:num]
+  sym_i <- which(topTable$Gene.symbol %in% sym)
+  dups <- which(duplicated(topTable$Gene.symbol[which(topTable$Gene.symbol %in% sym)]))
+  dup_names <- meta_degs_comb@metaresult$Symbol[dups]
+  return(topTable$logFC[sym_i[-dups]])
+}
+
+
+meta_25fc <- pull_meta_fc(250, fgen25_rpm$TopTable)
+meta_5fc <- pull_meta_fc(250, fgen5_rpm$TopTable)
+meta_HARV <- pull_meta_fc(250, fharv$TopTable)
+```
+
+
+
+```{r}
+
+df <- data.frame(Gen_5_RPM = meta_5fc, Gen_25_RPM =  meta_25fc, HARV = meta_HARV)
+rownames(df) <- meta_degs_comb@metaresult$Symbol[1:length(meta_25fc)]
+
+Heatmap(as.matrix(df), show_row_names = FALSE, show_column_names = TRUE, show_column_dend = FALSE, show_row_dend = TRUE, row_dend_reorder = TRUE, name = "Log2Fc")
+```
+
+Now I'm going to do some Unsupervised Learning With the Log2Fc Values
+
+```{r warning=FALSE}
+suppressPackageStartupMessages(library(factoextra))
+
+#Starting with k-means clustering we need to guess  the number of clusters, judging from the heatmap three or four major ones seem to appear. We can compute the number based on the within cluster variance at increasing values of k. 
+fviz_nbclust(df, method = "wss", FUNcluster = kmeans)
+
+#4 seemslike a good number of centroids
+my.kmeans <- kmeans(df, 4, nstart = 50)
+fviz_cluster(my.kmeans, data = df, labelsize = 8, repel = FALSE
+             , main = "Kmeans Clustering of Log2Fc of Summerized DEGs", pointsize = .4)
+```
+
+Now for PCA
+
+```{r}
+pca <- prcomp(df, center = TRUE, scale = TRUE)
+summary(pca)
+screeplot(pca, type = "l", npcs = 4, main = "Screeplot of Yeast DEGs")
+fviz_pca_biplot(pca, palette = "rickandmorty", axes = c(1,2), title = "Biplot of The First Two Principle Components Of Yeast Microgravity Microarrays")
+
+```
