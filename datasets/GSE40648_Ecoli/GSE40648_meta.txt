@@ -36,9 +36,9 @@ K,,Arunasri
    last_update_date:     
       Mar 08 2019
    overall_design:     
-      In this study, a clinostat that mimics microgravity conditions was used to investigate the effects of mi
-crogravity on E. coli grown in LB medium supplemented with glycerol to monitor the effects on growth and
- global gene expression using Affymetrix DNA microarrays.
+      In this study, a clinostat that mimics microgravity conditions was used to investigate the effects of microgravity on E. c
+oli grown in LB medium supplemented with glycerol to monitor the effects on growth and global gene expression using Affyme
+trix DNA microarrays.
    platform_id:     
       GPL3154
    platform_taxid:     
@@ -56,11 +56,10 @@ crogravity on E. coli grown in LB medium supplemented with glycerol to monitor t
    submission_date:     
       Sep 06 2012
    summary:     
-      This study demonstrates simulated microgravity effects on E. coli K 12 MG1655 when grown on LB medium su
-pplemented with glycerol. The results imply that E. coli readily reprograms itself to combat the multipl
-e stresses imposed due to microgravity. Under these conditions it survives by upregulating oxidative str
-ess protecting genes and simultaneously down regulating the membrane transporters and synthases to maint
-ain cell homeostasis.
+      This study demonstrates simulated microgravity effects on E. coli K 12 MG1655 when grown on LB medium supplemented with gl
+ycerol. The results imply that E. coli readily reprograms itself to combat the multiple stresses imposed due to microgravi
+ty. Under these conditions it survives by upregulating oxidative stress protecting genes and simultaneously down regulatin
+g the membrane transporters and synthases to maintain cell homeostasis.
    supplementary_file:     
       ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE40nnn/GSE40648/suppl/GSE40648_RAW.tar
    title:     
