@@ -92,7 +92,7 @@ de.analysis <- function(microgravity_group, ground_group, gse){
   design <- model.matrix(~ description + 0, filtered.gse)
   colnames(design) <- levels(fl)
   fit <- lmFit(filtered.gse, design)
-  cont.matrix <- makeContrasts(normal.gravity-micro.gravity, levels=design)
+  cont.matrix <- makeContrasts(micro.gravity-normal.gravity, levels=design)
   fit2 <- contrasts.fit(fit, cont.matrix)
   fit2 <- eBayes(fit2, 0.01)
   
@@ -104,7 +104,7 @@ de.analysis <- function(microgravity_group, ground_group, gse){
   
   #select parameters we want for the output
   tT <- subset(tT, select=c("adj.P.Val","P.Value","t","B","logFC","Gene.symbol","Gene.title",
-                            "Platform_ORF", "GO.Function", "GO.Process", "GO.Component", "Chromosome.annotation"))
+                            "Platform_ORF", "GO.Function", "GO.Process", "GO.Component", "Chromosome.annotation","ID"))
   out.list <- list("TopTable" = tT, "GSE" = filtered.gse)
   return(out.list)
   
@@ -117,4 +117,6 @@ remove.controls <- function(topTable){
   return(list(TopTable = f.topTable, failed.probes = failed.probes))
 }
 
+
+  
 
