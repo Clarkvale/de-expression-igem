@@ -52,8 +52,56 @@ labels <- c("5thGen", "25thGen")
 extractMetaData(filename = metaName, gse_groups = gse_list, microgravity_type = M.TYPE$HARV, metaLabels = labels, strain = strain)
 
 
+#
+#_____________________ESSENTIAL GENES FOR SPACEFLIGHT__________________________
 
 
+homo14 <- readxl::read_xlsx("essential/TableS5_vsT1-hom1-dropsToBg.xlsx", sheet = "flight-ground 14G")
+homo21 <- readxl::read_xlsx("essential/TableS5_vsT1-hom1-dropsToBg.xlsx", sheet = "flight-ground 21G")
+
+homo_names <- union(homo14$Gene, homo21$Gene)
+
+
+
+hetero <- readxl::read_xlsx("essential/TableS8_vsT1-het1-dropsToBg.xlsx", sheet = "flight-ground 21G")$Gene
+
+full_names <- union(homo_names, hetero)
+
+
+#getting genes excluded from study
+ex_genes_g <- readxl::read_xlsx("essential/TableS3_excludedStrains-hom.xlsx", sheet = c("ground"))$Gene
+ex_genes_f <- readxl::read_xlsx("essential/TableS3_excludedStrains-hom.xlsx", sheet = c("flight"))$Gene
+
+ex_genes <- union(ex_genes_f, ex_genes_g)
+
+#Adding to Gen5 Study 
+essential_bool5 <- c()
+
+essential_bool5[match(full_names, gen5$TopTable$Gene.symbol)] <- TRUE
+essential_bool5[match(ex_genes, gen5$TopTable$Gene.symbol)] <- NA
+
+listed_genes <- union(ex_genes, full_names)
+falsed <- setdiff(gen5$TopTable$Gene.symbol, listed_genes)
+
+essential_bool5[match(falsed, gen5$TopTable$Gene.symbol)] <- FALSE
+
+gen5$TopTable <-  gen5$TopTable %>% mutate(Essential_For_SpaceFlight = essential_bool5)
+
+#Adding to Gen25 Study
+essential_bool25 <- c()
+
+essential_bool25[match(full_names, gen25$TopTable$Gene.symbol)] <- TRUE
+essential_bool25[match(ex_genes, gen25$TopTable$Gene.symbol)] <- NA
+
+listed_genes <- union(ex_genes, full_names)
+falsed <- setdiff(gen25$TopTable$Gene.symbol, listed_genes)
+
+essential_bool25[match(falsed, gen25$TopTable$Gene.symbol)] <- FALSE
+
+gen25$TopTable <-  gen25$TopTable %>% mutate(Essential_For_SpaceFlight = essential_bool25)
+
+
+#________________________________________________________________________________
 
 ##DE analysis Between generations
 micro.5thgen <- c(7,8,9)
