@@ -3,7 +3,7 @@
 
 library(enumerations)
 library(arrayQualityMetrics)
-M.TYPE <- create.enum(c("HARV","RPM","HYPERBOLIC","SPACEFLOWN"))
+M.TYPE <- create.enum(c("HARV","RPM","HYPERBOLIC","SPACEFLOWN", "RCCS"))
 
 logcheck <- function(expression_matrix){
   
