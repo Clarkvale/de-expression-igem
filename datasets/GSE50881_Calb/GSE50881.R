@@ -23,16 +23,23 @@ gse <- list.gse[[1]]
 
 fvarLabels(gse) <- make.names(fvarLabels(gse))
 
-design <- cbind(DyeEffect = 1,SpaceVsGround = c(1,-1,1,-1,1,-1,1,-1))
-#block <- fData(gse[,1])$Block
 
 
-fit <- lmFit(gse,design)
-fit <- eBayes(fit, 0.01)
 
-#topTable.dyes <- topTable(fit, coef = "DyeEffect")
-
-anno.data <- fData(gse)
+# design <- cbind(DyeEffect = 1,SpaceVsGround = c(1,-1,1,-1,1,-1,1,-1))
+# #block <- fData(gse[,1])$Block
+# 
+# 
+# fit <- lmFit(gse,design)
+# fit <- eBayes(fit, 0.01)
+# 
+# #topTable.dyes <- topTable(fit, coef = "DyeEffect")
+# 
+# anno.data <- fData(gse)
+# 
+# f.tT <- remove.candida.controls(topTable.SvsG)
+# 
+# f.tT <- subset(f.tT, select = c("CGD_Systematic_Name", "Description", "SpaceVsGround", "AveExpr", "F", "P.Value", "adj.P.Val"))
 
 topTable.SvsG <- topTable(fit, adjust.method = "fdr", sort.by = "B", number = length(fit[[1]]))
 f.tT <- remove.candida.controls(topTable.SvsG)
@@ -62,6 +69,7 @@ remove.candida.controls <- function(toptable){
   passed.probes <- which(toptable$CGD_Systematic_Name != "")
   return(topTable.SvsG[passed.probes,])
 }
+
 
 
 
