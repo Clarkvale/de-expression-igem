@@ -1,0 +1,41 @@
+<h3>Summary</h3>
+<p>AstroYeast MuliStress Explorer is a small webapp intended for exploring results of a series of pairwise comparisons of <em>Saccharomyces cerevisiae</em> transcriptomics analyses in simulated microgravity (HARV bioreactor) with various other environmental stressors. Prior to the meta-analysis, differential expression analysis was performed using linear mixed models provided the by the R package limma for each condition. The adjusted p-values for each experiment were combined usng a random effects model in addition to summarizing the fold change across conditions.&nbsp; The environmental stresses include:</p>
+<ul>
+<li>Oxidative Stress from 0.19mM Cumene hydroperoxide. RNA was extracted after 6 minutes of treatment. (GSE26169, Sha et al.)</li>
+<li>Heat Shock at 37C for 7 minutes. (GSE132186,&nbsp;M&uuml;hlhofer et al.)</li>
+<li>Hyperosmotic Shock from 0.4M of NaCl. RNA was extracted after 6 minutes of treatment.(GSE13097, Romero-Santacreu et al.)</li>
+</ul>
+<p>&nbsp;</p>
+<p>All of the above datasets were then combined both pairwise and pooled with data derived from the condition:</p>
+<ul>
+<li>Simulated low shear modeled microgravity (LSMMG) from growth in a High Aspect Ratio Vessel (HARV).&nbsp; RNA extracted after 5 generations of growth.(GSE4136, Sheehan et al.)</li>
+</ul>
+<h3>Guide</h3>
+<p>The MultiStress explorer provides three different plots to review the results of the meta-analysis. The first is an interactive&nbsp;<strong>Volcano Plot</strong> which displays the combined p-values versus the summarized log-fold change in expression for each gene. Colour intensity is derived from sign consistency across conditions, a sign consistency of 2 for instance would indicate that the gene is upregulated across two conditions.</p>
+<p>The <strong>Gene</strong> <strong>Forest Plot </strong>shows the expression of particular gene across conditions when a name is typed in the window. The input expects a common gene name in most cases or an ORF identifier when none are available. All genes displayed in the volcano plot are valid entries for this view.</p>
+<p>The <strong>PCA-Biplot </strong>is the results of a principal component analysis of the log-fold difference in expression prior to meta-analysis.&nbsp; Eigenvectors are plotted with their direction indicative of their similarity to other groups and their length corresponding to the magnitude of variance the group contributes. Individual genes can be plotted and labeled by using the three query variables which select genes on the basis of their inclusion in the random effects model. These query variables are:</p>
+<ul>
+<li><strong>Log2 Summary Fold Change</strong>: the threshold for summary fold change values as shown in the volcano plot. The genes are queried using an <em>at least </em>heuristic of selection. This means that an input of 1 will select all genes at one or above (&gt;= 1) while an input of -1 will select all genes at -1 or <em>below </em>(&lt;= -1).</li>
+<li><strong>Number of Top Ranking Genes</strong>: Genes are ranked from smallest to largest based on their summary p-values. A input of 10 for example would select the ten top-most genes in the volcano plot.</li>
+<li><strong>Sign Consistency</strong>: The direction of expression across stress conditions are combined into a single metric by using the sign of the fold change value. A gene which is upregulate in one study contributes +1 to the sum and vice versa. The formal definition is:</li><a href="https://www.codecogs.com/eqnedit.php?latex=\sum_{i=1}^{n}\frac{logFC_{i}}{\left&space;|&space;logFC_{i}&space;\right&space;|}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\sum_{i=1}^{n}\frac{logFC_{i}}{\left&space;|&space;logFC_{i}&space;\right&space;|}" title="\sum_{i=1}^{n}\frac{logFC_{i}}{\left | logFC_{i} \right |}" /></a>
+</ul>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where <em>n </em>is the number of studies and <em>logFC </em>is the log2 fold change for a particular gene.</p>
+<ul>
+<li><strong>Plot Specific Gene Values</strong>: A gene name or a series of gene names can be entered to be shown on the biplot. If multiple entries are desired then the user must use a comma as separator with no spaces included. Gene names are expected in all-caps and are not present in the biplot data if one or more name is not found in a study.</li>
+</ul>
+<h3>Citations</h3>
+<div class="csl-bib-body" style="line-height: 1.35; margin-left: 2em; text-indent: -2em;">
+<div class="csl-bib-body" style="line-height: 1.35; margin-left: 2em; text-indent: -2em;">
+<div class="csl-entry" style="margin-bottom: 1em;">Chang, W., J. Cheng, J.J. Allaire, Y. Xie, J. McPherson, RStudio, jQuery F. (jQuery library and jQuery U. library), jQuery contributors (jQuery library; authors listed in inst/www/shared/jquery-AUTHORS.txt), jQuery U. contributors (jQuery U. library; authors listed in inst/www/shared/jqueryui/AUTHORS.txt), M.O. (Bootstrap library), J.T. (Bootstrap library), B. contributors (Bootstrap library), Twitter, I. (Bootstrap library), A.F. (html5shiv library), S.J. (Respond js library), S.P. (Bootstrap-datepicker library), A.R. (Bootstrap-datepicker library), D.G. (Font-A. font), B.R. (selectize js library), K.M.K. (es5-shim library), es5-shim contributors (es5-shim library), D.I. (ion rangeSlider library), S.S. (Javascript strftime library), S.L. (DataTables library), J.F. (showdown js library), J.G. (showdown js library), I.S. (highlight js library), and R.C.T. (tar implementation from R). 2020. shiny: Web Application Framework for R.</div>
+<div class="csl-entry" style="margin-bottom: 1em;">Kassambara, A., and F. Mundt. 2020. factoextra: Extract and Visualize the Results of Multivariate Data Analyses.</div>
+<div class="csl-entry" style="margin-bottom: 1em;">M&uuml;hlhofer, M., E. Berchtold, C.G. Stratil, G. Csaba, E. Kunold, N.C. Bach, S.A. Sieber, M. Haslbeck, R. Zimmer, and J. Buchner. 2019. The Heat Shock Response in Yeast Maintains Protein Homeostasis by Chaperoning and Replenishing Proteins. <em>Cell Reports</em>. 29:4593-4607.e8. doi:<a href="https://doi.org/10.1016/j.celrep.2019.11.109">10.1016/j.celrep.2019.11.109</a>.</div>
+<div class="csl-entry" style="margin-bottom: 1em;">Prada, C., D. Lima, and H. Nakaya. 2020. MetaVolcanoR: Gene Expression Meta-analysis Visualization Tool. Bioconductor version: Release (3.11).</div>
+<div class="csl-entry" style="margin-bottom: 1em;">Romero-Santacreu, L., J. Moreno, J.E. P&eacute;rez-Ort&iacute;n, and P. Alepuz. 2009. Specific and global regulation of mRNA stability during osmotic stress in Saccharomyces cerevisiae. <em>RNA</em>. 15:1110&ndash;1120. doi:<a href="https://doi.org/10.1261/rna.1435709">10.1261/rna.1435709</a>.</div>
+<div class="csl-entry" style="margin-bottom: 1em;">Sha, W., A.M. Martins, R. Laubenbacher, P. Mendes, and V. Shulaev. 2013. The Genome-Wide Early Temporal Response of Saccharomyces cerevisiae to Oxidative Stress Induced by Cumene Hydroperoxide. <em>PLOS ONE</em>. 8:e74939. doi:<a href="https://doi.org/10.1371/journal.pone.0074939">10.1371/journal.pone.0074939</a>.</div>
+<div class="csl-entry" style="margin-bottom: 1em;">Sheehan, K.B., K. McInnerney, B. Purevdorj-Gage, S.D. Altenburg, and L.E. Hyman. 2007. Yeast genomic expression patterns in response to low-shear modeled microgravity. <em>BMC Genomics</em>. 8:3. doi:<a href="https://doi.org/10.1186/1471-2164-8-3">10.1186/1471-2164-8-3</a>.</div>
+<div class="csl-entry">Smyth, G., Y. Hu, M. Ritchie, J. Silver, J. Wettenhall, D. McCarthy, D. Wu, W. Shi, B. Phipson, A. Lun, N. Thorne, A. Oshlack, C. de Graaf, Y. Chen, M. Langaas, E. Ferkingstad, M. Davy, F. Pepin, and D. Choi. 2020. limma: Linear Models for Microarray Data. Bioconductor version: Release (3.11).</div>
+</div>
+</div>
+<h3>Author</h3>
+<p>Benjamin Clark, Concordia University. Montreal Quebec, Canada</p>
+<p>&nbsp;</p>

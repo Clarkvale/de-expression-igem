@@ -1,3 +1,4 @@
+
 load("data/appdata.RData")
 library(sjmisc)
 library(dplyr)
@@ -17,7 +18,8 @@ query <- function(varlist, smodel){
       name <- names(varlist)[i]
       out.var <- switch(name,"pval" = model["randomP"] <= varlist[i],
                         "logfc2" = model["randomSummary"] >= varlist[i],
-                        "tRank" = model["rank"] <= varlist[i])
+                        "tRank" = model["rank"] <= varlist[i],
+                        "all" = c(rep(TRUE, length(model$Symbol)))) 
       
       out.ids[name] <- list(out.var)
     }
@@ -143,8 +145,8 @@ pull_queried <- function(gene_ids){
   
 }
 
-logfcs <- pull_queried(query(varlist = list(pval = 0.001), smodel = "Random Effects Modeling"))
+logfcs <- pull_queried(query(varlist = list(all = TRUE), smodel = "Random Effects Modeling"))
 pca <- prcomp(na.omit(logfcs))
-
-
+factoextra::fviz_pca_biplot(pca, select.ind = list(name = c("GAL1","ERG11", "ADR1")), repel = TRUE, col.var = "contrib", ggtheme = theme_minimal())
+traceback()
 
