@@ -9,6 +9,7 @@ library(MetaVolcanoR)
 library(plotly)
 library(dplyr)
 library(sjmisc)
+library(ComplexHeatmap)
 source("custom_draw.R")
 suppressPackageStartupMessages(library(factoextra))
 source("metastudy_functions.R")
@@ -307,7 +308,8 @@ ui <- fluidPage(
           tabPanel("Graphs", 
             plotlyOutput("volcano"),
             plotOutput("forest"),
-            plotOutput("pca")
+            plotOutput("pca"),
+            plotOutput("heat")
             )
           
         )
@@ -382,7 +384,8 @@ server <- function(input, output) {
      labels = c(),
      specific_labels = NULL,
      q_length = 0,
-     show_label = c("all")
+     show_label = c("all"),
+     row_label = FALSE
    )
    
    build_pca_data <- reactive({prcomp((na.omit(pull_queried(query(varlist = list(all = TRUE), smodel = input$var), smodel = input$var))))})
@@ -401,7 +404,7 @@ server <- function(input, output) {
       reactive_data$labels <- rownames(reactive_pull_query())
      }
      
-     if(reactive_data$q_length > 200){
+     if(reactive_data$q_length > 60){
        reactive_data$show_label <- c("var") 
      }
      
@@ -424,7 +427,16 @@ server <- function(input, output) {
    })
    
   
-   #output$heat <- renderPlot({Heatmap(as.matrix(na.omit(reactive_data$logfc)), heatmap_legend_param = list(title = "Log2FC"), show_row_names = FALSE)})
+   output$heat <- renderPlot({
+     if(reactive_data$q_length < 100){
+       reactive_data$row_label <- TRUE
+     }
+     else{
+       reactive_data$row_label <- FALSE
+     }
+     Heatmap(as.matrix(na.omit(pull_queried(reactive_query(), smodel = input$var))), heatmap_legend_param = list(title = "Log2FC"), show_row_names = reactive_data$row_label)})
+   
+   
    output$pca <- renderPlot({factoextra::fviz_pca_biplot(build_pca_data(), label = "var", col.var = "contrib", ggtheme = theme_classic())})
    output$download <- downloadHandler(filename = "AstroYeast_logfcs.csv", 
                                       content = function(file){

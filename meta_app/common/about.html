@@ -15,14 +15,18 @@
 <p>The <strong>Gene</strong> <strong>Forest Plot </strong>shows the expression of particular gene across conditions when a name is typed in the window. The input expects a common gene name in most cases or an ORF identifier when none are available. All genes displayed in the volcano plot are valid entries for this view.</p>
 <p>The <strong>PCA-Biplot </strong>is the results of a principal component analysis of the log-fold difference in expression prior to meta-analysis.&nbsp; Eigenvectors are plotted with their direction indicative of their similarity to other groups and their length corresponding to the magnitude of variance the group contributes. Individual genes can be plotted and labeled by using the three query variables which select genes on the basis of their inclusion in the random effects model. These query variables are:</p>
 <ul>
+<ul>
 <li><strong>Log2 Summary Fold Change</strong>: the threshold for summary fold change values as shown in the volcano plot. The genes are queried using an <em>at least </em>heuristic of selection. This means that an input of 1 will select all genes at one or above (&gt;= 1) while an input of -1 will select all genes at -1 or <em>below </em>(&lt;= -1).</li>
 <li><strong>Number of Top Ranking Genes</strong>: Genes are ranked from smallest to largest based on their summary p-values. A input of 10 for example would select the ten top-most genes in the volcano plot.</li>
-<li><strong>Sign Consistency</strong>: The direction of expression across stress conditions are combined into a single metric by using the sign of the fold change value. A gene which is upregulate in one study contributes +1 to the sum and vice versa. The formal definition is:</li><a href="https://www.codecogs.com/eqnedit.php?latex=\sum_{i=1}^{n}\frac{logFC_{i}}{\left&space;|&space;logFC_{i}&space;\right&space;|}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\sum_{i=1}^{n}\frac{logFC_{i}}{\left&space;|&space;logFC_{i}&space;\right&space;|}" title="\sum_{i=1}^{n}\frac{logFC_{i}}{\left | logFC_{i} \right |}" /></a>
+<li><strong>Sign Consistency</strong>: The direction of expression across stress conditions are combined into a single metric by using the sign of the fold change value. A gene which is upregulate in one study contributes +1 to the sum and vice versa. The formal definition is:</li>
 </ul>
+</ul>
+<p><a href="https://www.codecogs.com/eqnedit.php?latex=\sum_{i=1}^{n}\frac{logFC_{i}}{\left&amp;space;|&amp;space;logFC_{i}&amp;space;\right&amp;space;|}" target="_blank"><img title="\sum_{i=1}^{n}\frac{logFC_{i}}{\left | logFC_{i} \right |}" src="https://latex.codecogs.com/gif.latex?\sum_{i=1}^{n}\frac{logFC_{i}}{\left&amp;space;|&amp;space;logFC_{i}&amp;space;\right&amp;space;|}" alt="" /></a></p>
 <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where <em>n </em>is the number of studies and <em>logFC </em>is the log2 fold change for a particular gene.</p>
 <ul>
 <li><strong>Plot Specific Gene Values</strong>: A gene name or a series of gene names can be entered to be shown on the biplot. If multiple entries are desired then the user must use a comma as separator with no spaces included. Gene names are expected in all-caps and are not present in the biplot data if one or more name is not found in a study.</li>
 </ul>
+<p>The <strong>Heatmap </strong>is also generated from the result of the query input variables showing the intensity of log2 Fold-Change from each dataset. Genes are only drawn if the gene is found in every study.</p>
 <h3>Citations</h3>
 <div class="csl-bib-body" style="line-height: 1.35; margin-left: 2em; text-indent: -2em;">
 <div class="csl-bib-body" style="line-height: 1.35; margin-left: 2em; text-indent: -2em;">
@@ -38,4 +42,3 @@
 </div>
 <h3>Author</h3>
 <p>Benjamin Clark, Concordia University. Montreal Quebec, Canada</p>
-<p>&nbsp;</p>
