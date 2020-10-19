@@ -7,6 +7,7 @@ library(limma)
 library(arrayQualityMetrics)
 library(FoldGO)
 library(GO.db)
+library(dplyr)
 source("microarray_functions.R")
 
 
@@ -40,129 +41,119 @@ fvarLabels(gse) <- make.names(fvarLabels(gse))
 # 
 # f.tT <- subset(f.tT, select = c("CGD_Systematic_Name", "Description", "SpaceVsGround", "AveExpr", "F", "P.Value", "adj.P.Val"))
 
+topTable.SvsG <- topTable(fit, adjust.method = "fdr", sort.by = "B", number = length(fit[[1]]))
+f.tT <- remove.candida.controls(topTable.SvsG)
 
-median.blocked.duplicates <- function(GSE){
-  blocks <- factor(fData(GSE[,1])$Block)
-  spots <- fData(GSE[,1])
-  for(i in 1:length(gse)){
-    for(block in 1:length(levels(blocks))){
-      bi <- which(blocks == as.numeric(levels(blocks)[block]))
-      dups <- which(spots$SPOT_ID == spots$SPOT_ID[1])
-      num.of.dups <- length(dups)
-      dup.length <- dups[2] - dups[1]
-      for(j in 1:length(dup.length)){
-        med.spot <- which() 
-      }
-    }
-  }
+f.tT <- subset(f.tT, select = c("CGD_Systematic_Name", "Description", "SpaceVsGround", "AveExpr", "F", "P.Value", "adj.P.Val", "SPOT_ID", "ID"))
+
+
+
+rowid <- c() 
+for(i in 1:length(f.tT$ID)){
+  rowid <- append(rowid,((f.tT %>% filter(SPOT_ID == f.tT$SPOT_ID[i]) %>% arrange(P.Value))[1,])$ID)
+  
+}
+
+best.rows.ids <- rowid[-which(duplicated(rowid))]
+rm.ftT <- na.omit(f.tT[best.rows.ids,]) %>% arrange(adj.P.Val)
+
+match.id.lowest.pval <- function(id){
+  best.p <- as.data.frame(f.tT) %>% dplyr::filter(SPOT_ID == id) %>% dplyr::arrange(P.Value)[1,]
+  return(best.p)
 }
 
 
 
-get.median.duplicates <- function(gsm, block.num){
-  browser()
-  block.ids <-  fData(gsm)$SPOT_ID[which(fData(gsm)$Block == block.num)]
-  #remove empty spots and autoblanks
-  
-  block.ids <- block.ids[-which(!grepl("orf19", block.ids))]
-  block.index <- which(fData(gsm)$SPOT_ID[which(fData(gsm)$Block == block.num)] %in% block.ids)
-  block.ex <- exprs(gsm)[block.index]
-  
-  dups <- which(block.ids == block.ids[1])
-  ndups <- length(dups)
-  spacing <- dups[2] - dups[1]
-  
-  cor <- duplicateCorrelation(block.ex, ndups = ndups, spacing = spacing )
-  
-  
-  unique.spots <- unique(block.ids)
-  
-
-  
-  counter <- 1
-  out <- c()
-  added.ar <- c()
-  #dupcor <- duplicateCorrelation(gsm[which(block)])
-  # while(b.id != unique.spots[length(unique.spots)]){
-  #   #find duplicate spots
-  #   if(!(b.id %in% added.ar)){
-  #     dups <- which(block.ids == b.id)
-  #     #pull median values from identical spots
-  #     med <- median(na.omit(exprs(gsm[dups])))
-  #     #assign to output
-  #     out[b.id] <- med
-  #     
-  #     added.ar <- append(added.ar, b.id)
-  #     
-  #     
-  #   }
-  #   #update counter and change id
-  #   counter <- counter + 1
-  #   b.id <- unique.spots[counter]
-  # } 
-  return(out)
+remove.candida.controls <- function(toptable){
+  controls <- which(toptable$CGD_Systematic_Name == "")
+  passed.probes <- which(toptable$CGD_Systematic_Name != "")
+  return(topTable.SvsG[passed.probes,])
 }
 
-#scrapping the median business and doing duplicatedCorrelation across all slides per block
-median.gse <- list()
-full.medians <- c()
-vblocks <- factor(fData(gse[,1])$Block)
-for(gsm in 1:length(colnames(gse))){
-  #browser()
-  for(b in 1:length(levels(vblocks))){
-    
-    block.medians <- get.median.duplicates(gsm = gse[,gsm], block.num = as.numeric(b))
-    full.medians <- append(full.medians, block.medians) 
-  }
-  median.gse[[colnames(gse)[gsm]]] <- full.medians 
-  full.medians <- c()
-}
 
-# median.matrix <- matrix(unlist(median.gse), ncol = 8)
-# rownames(median.matrix) <- names(median.gse[[1]])
-# colnames(median.matrix) <- names(median.gse)
-# median.matrix <- normalizeCyclicLoess(median.matrix)
-# 
-# fit <- lmFit(median.matrix, design)
-# fit <- eBayes(fit, 0.01)
-# topTable.SvsG <- topTable(fit, adjust.method = "fdr", sort.by = "B", number = length(fit[[1]]))
-# 
+
 
 
 
 ##getting GO annotations locally
-# setwd("C:/Users/Benja/repos/de-expression-git/de-expression-igem/datasets/GSE50881_Calb")
-# go_ids <- read.csv("Candida_albicans_GO.csv")
-# ordered.gos <- list()
-# for(annos in 1:length(f.tT$CGD_Systematic_Name)){
-#   indexes <- which(f.tT$CGD_Systematic_Name[annos] == go_ids$systemic_id)
-#   ids <- go_ids$go_id[indexes]  
-#   ordered.gos[annos] <- list(ids)
-#   
-# }
-# 
-# anno.terms <- list()
-# for( i in 1:length(ordered.gos)){
-#   GO.PROCESS <- c()
-#   GO.FUNCTION <- c()
-#   GO.COMPONENT <- c()
-#   if( length(ordered.gos[[i]]) == 0){
-#   anno.terms[[anno.data$CGD_Systematic_Name[i]]] <- list(GO.FUNCTION = NA, GO.COMPONENT = NA, GO.PROCESS = NA)
-#   next
-#   }
-#   for(j in 1:length(ordered.gos[[i]])){
-#     
-#     if(Ontology(ordered.gos[[i]][[j]]) == "MF"){
-#       GO.FUNCTION <- append(GO.FUNCTION, Term(ordered.gos[[i]][[j]]))
-#       
-#     }else if(Ontology(ordered.gos[[i]][[j]]) == "CC"){
-#       GO.COMPONENT <- append(GO.COMPONENT, Term(ordered.gos[[i]][[j]]))
-#     }
-#     else if(Ontology(ordered.gos[[i]][[j]]) == "BP"){
-#       GO.PROCESS <- append(GO.PROCESS, Term(ordered.gos[[i]][[j]]))
-#       
-#     }
-#   }
-#   anno.terms[[anno.data$CGD_Systematic_Name[i]]] <- list(GO.FUNCTION = GO.FUNCTION, GO.COMPONENT = GO.COMPONENT, GO.PROCESS = GO.PROCESS)
-# }
+setwd("C:/Users/Benja/repos/de-expression-git/de-expression-igem/datasets/GSE50881_Calb")
+go_ids <- read.csv("Candida_albicans_GO.csv")
+ordered.gos <- list()
+for(annos in 1:length(rm.ftT$CGD_Systematic_Name)){
+  indexes <- which(rm.ftT$CGD_Systematic_Name[annos] == go_ids$systemic_id)
+  ids <- go_ids$go_id[indexes]  
+  ordered.gos[annos] <- list(ids)
+  
+}
 
+anno.terms <- list()
+full.MF <- c()
+full.CC <- c()
+full.BP <- c()
+for(i in 1:length(ordered.gos)){
+  GO.PROCESS <- c()
+  GO.FUNCTION <- c()
+  GO.COMPONENT <- c()
+  if(length(ordered.gos[[i]]) == 0){
+   full.MF <- append(full.MF, NA)
+   full.CC <-  append(full.CC, NA) 
+   full.BP <- append(full.BP, NA)
+   next
+  }
+  for(j in 1:length(ordered.gos[[i]])){
+    
+    if(Ontology(ordered.gos[[i]][[j]]) == "MF"){
+      GO.FUNCTION <- append(GO.FUNCTION, Term(ordered.gos[[i]][[j]]))
+      
+    }else if(Ontology(ordered.gos[[i]][[j]]) == "CC"){
+      GO.COMPONENT <- append(GO.COMPONENT, Term(ordered.gos[[i]][[j]]))
+      
+    }
+    else if(Ontology(ordered.gos[[i]][[j]]) == "BP"){
+      GO.PROCESS <- append(GO.PROCESS, Term(ordered.gos[[i]][[j]]))
+      
+    }
+    
+  }
+  if(length(GO.FUNCTION) != 0){
+    full.MF <- append(full.MF, paste(GO.FUNCTION, collapse = "///"))}
+  else{
+    full.MF <- append(full.MF, NA)
+  }
+  if(length(GO.PROCESS) != 0){
+    full.BP <- append(full.BP, paste(GO.PROCESS, collapse = "///"))}
+  else{
+    full.BP <- append(full.BP, NA)
+  }
+  if(length(GO.COMPONENT) != 0){
+    full.CC <- append(full.CC, paste(GO.COMPONENT, collapse = "///"))}
+  else{
+    full.cc <- append(full.cc, NA)
+  }
+  #anno.terms[[anno.data$CGD_Systematic_Name[i]]] <- list(GO.FUNCTION = GO.FUNCTION, GO.COMPONENT = GO.COMPONENT, GO.PROCESS = GO.PROCESS)
+}
+names <- sapply(rm.ftT$Description, USE.NAMES = FALSE, FUN = function(x){
+  if(startsWith(x , prefix = "|")){
+    return(NA)
+  }
+  else{
+    return(stringr::str_extract(strsplit(x, split = "|", fixed = TRUE)[[1]][1], pattern = "\\w+"))
+  }
+})
+names <- unlist(names)
+
+Chromosome_Location <- stringr::str_extract_all(rm.ftT$Description, pattern = "(Contig\\d+:\\D+\\d+..\\d+\\)|Contig\\d+:\\d+..\\d+)")
+Chromosome_Location <- sapply(Chromosome_Location, FUN = paste, collapse = "///", USE.NAMES = FALSE)
+
+final.tT <- rm.ftT %>% mutate( GO.Function = full.MF, GO.Component = full.CC, 
+                               GO.Process = full.BP, Gene.Name = names, 
+                               Chromosome.Location = Chromosome_Location, 
+                               ID = NULL, SPOT_ID = NULL, Description = NULL) %>% 
+          rename(LogFC = SpaceVsGround, Platform_ORF = CGD_Systematic_Name)
+
+
+write.csv(final.tT, file = "datasets/GSE50881_Calb/GSE50881.csv")
+
+
+extractMetaData(gse_groups = list(list(GSE = gse[,c(1,3,5,7)]), list(GSE = gse[,c(2,4,6,8)])), microgravity_type = M.TYPE$SPACEFLOWN, 
+                filename = "datasets/GSE50881_Calb/GSE50881_meta", metaLabels = c("dye_swap1", "dye_swap2"), strain = "SC5413")
