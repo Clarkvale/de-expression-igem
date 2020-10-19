@@ -10,6 +10,7 @@ library(plotly)
 library(dplyr)
 library(sjmisc)
 library(ComplexHeatmap)
+library(ggplot2)
 source("custom_draw.R")
 suppressPackageStartupMessages(library(factoextra))
 source("metastudy_functions.R")
@@ -18,7 +19,7 @@ load("data/appdata.RData")
 
 #__________Error handling__________
 is.empty <- function(var){
-  return(var == "")
+  return(var == "" || var == 0)
 }
 
 name.check <- function(models, names){
