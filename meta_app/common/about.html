@@ -1,9 +1,9 @@
-<h3>Summary</h3>
+<<h3>Summary</h3>
 <p>AstroYeast MuliStress Explorer is a small webapp intended for exploring results of a series of pairwise comparisons of <em>Saccharomyces cerevisiae</em> transcriptomics analyses in simulated microgravity (HARV bioreactor) with various other environmental stressors. Prior to the meta-analysis, differential expression analysis was performed using linear mixed models provided the by the R package limma for each condition. The adjusted p-values for each experiment were combined usng a random effects model in addition to summarizing the fold change across conditions.&nbsp; The environmental stresses include:</p>
 <ul>
-<li>Oxidative Stress from 0.19mM Cumene hydroperoxide. RNA was extracted after 6 minutes of treatment. (GSE26169, Sha et al.)</li>
-<li>Heat Shock at 37C for 7 minutes. (GSE132186,&nbsp;M&uuml;hlhofer et al.)</li>
-<li>Hyperosmotic Shock from 0.4M of NaCl. RNA was extracted after 6 minutes of treatment.(GSE13097, Romero-Santacreu et al.)</li>
+<li>Oxidative Stress from 0.19mM Cumene hydroperoxide. RNA was extracted after 6 minutes of treatment. (GSE26169, Sha et al. 2013)</li>
+<li>Heat Shock at 37C for 7 minutes. (GSE132186,&nbsp;M&uuml;hlhofer et al. 2019)</li>
+<li>Hyperosmotic Shock from 0.4M of NaCl. RNA was extracted after 6 minutes of treatment.(GSE13097, Romero-Santacreu et al. 2009)</li>
 </ul>
 <p>&nbsp;</p>
 <p>All of the above datasets were then combined both pairwise and pooled with data derived from the condition:</p>
@@ -27,6 +27,7 @@
 <li><strong>Plot Specific Gene Values</strong>: A gene name or a series of gene names can be entered to be shown on the biplot. If multiple entries are desired then the user must use a comma as separator with no spaces included. Gene names are expected in all-caps and are not present in the biplot data if one or more name is not found in a study.</li>
 </ul>
 <p>The <strong>Heatmap </strong>is also generated from the result of the query input variables showing the intensity of log2 Fold-Change from each dataset. Genes are only drawn if the gene is found in every study.</p>
+<p>The data which generates the PCA-Biplot and the heatmap can be downloaded in csv format. All datapoints are log2 Fold-Change values.</p>
 <h3>Citations</h3>
 <div class="csl-bib-body" style="line-height: 1.35; margin-left: 2em; text-indent: -2em;">
 <div class="csl-bib-body" style="line-height: 1.35; margin-left: 2em; text-indent: -2em;">
@@ -42,3 +43,4 @@
 </div>
 <h3>Author</h3>
 <p>Benjamin Clark, Concordia University. Montreal Quebec, Canada</p>
+<p>&copy; 2020 iGEM Concordia. All rights reserved.</p>
