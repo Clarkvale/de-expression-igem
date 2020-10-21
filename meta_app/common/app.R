@@ -63,7 +63,7 @@ validate_id <- function(gene_names, models){
   
 }
 numeric_or_empty <- function(var){
-  return(is.numeric(var) || var == "")
+  return(!is.na(as.numeric(var) || var == ""))
 }
 query.validate <- function(input){
   if(all(sapply(input, FUN = is.empty))){
@@ -75,7 +75,8 @@ query.validate <- function(input){
   else{
     return(NULL)
   }
-} 
+}
+
 
 forest_validate <- function(name, model){
   if(name == "" || name == "Enter Common Gene Name"){
@@ -450,14 +451,14 @@ server <- function(input, output) {
      
      
      
-     if(input$id != ""){
-       validate(validate_id(gene_names = strsplit(input$id, split = ",")[[1]], models = input$var))
-       reactive_data$labels <- strsplit(input$id, split = ",")[[1]]
-     }
+      validate(query.validate(list(logfc2 = input$logfc2, tRank = input$tRank, signcon = input$signcon)))
+      validate(validate_id(gene_names = strsplit(input$id, split = ",")[[1]], models = input$var))
+      reactive_data$labels <- strsplit(input$id, split = ",")[[1]]
      
-     else{
+     
+    
       reactive_data$labels <- rownames(reactive_pull_query())
-     }
+     
      
      if(reactive_data$q_length > 60){
        reactive_data$show_label <- c("var") 
@@ -482,18 +483,18 @@ server <- function(input, output) {
    })
    
   
-   # output$heat <- renderPlot({
-   #   query.validate(input = c(input$logfc2, input$tRank, input$signcon))
-   #   
-   #   if(reactive_data$q_length < 100){
-   #     reactive_data$row_label <- TRUE
-   #   }
-   #   else{
-   #     reactive_data$row_label <- FALSE
-   #   }
-   #   Heatmap(as.matrix(na.omit(pull_queried(reactive_query(), smodel = input$var))), heatmap_legend_param = list(title = "Log2FC"), show_row_names = reactive_data$row_label)})
-   # 
-   # 
+   output$heat <- renderPlot({
+     validate(query.validate(input = c(input$logfc2, input$tRank, input$signcon)))
+
+     if(reactive_data$q_length < 100){
+       reactive_data$row_label <- TRUE
+     }
+     else{
+       reactive_data$row_label <- FALSE
+     }
+     Heatmap(as.matrix(na.omit(pull_queried(reactive_query(), smodel = input$var))), heatmap_legend_param = list(title = "Log2FC"), show_row_names = reactive_data$row_label)})
+
+
    output$pca <- renderPlot({factoextra::fviz_pca_biplot(build_pca_data(), label = "var", col.var = "contrib", ggtheme = theme_classic())})
    output$download <- downloadHandler(filename = "AstroYeast_logfcs.csv", 
                                       content = function(file){
