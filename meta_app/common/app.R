@@ -273,7 +273,7 @@ row.check <- function(df){
 ui <- fluidPage(
    
    # Application title
-   titlePanel("AstroYeast MultiStress Explorer"),
+   titlePanel("AstroBio MultiStress Explorer"),
    
    # Sidebar 
    sidebarLayout(
@@ -359,11 +359,21 @@ server <- function(input, output) {
   #Rendering main page graphs 
    output$volcano <- renderPlot({
             showNotification("Loading Plots...")
+            #Sys.sleep(15)
+            showNotification("Click on points on the volcano plot to see how gene 
+                    expression changes or type the gene name in the 'Gene Forest Plot' window.", 
+                             type = "message", duration = 40)
             switch(input$var, 
             "HeatShock" = build_volcano(rem_g5.v.he7@metaresult),
             "Oxidative Stress" = build_volcano(rem_g5.v.ox6@metaresult),
             "High Osmolarity" = build_volcano(rem_g5.v.osm6@metaresult),
-            "All of the Above"= build_volcano(all_rem@metaresult))})
+            "All of the Above"= build_volcano(all_rem@metaresult))
+     
+            
+     })
+   
+   
+   
    
    output$text_hover <- renderPrint({
      
@@ -449,15 +459,25 @@ server <- function(input, output) {
    #When save ids is clicked, save them in session
    observeEvent(input$save, {
      
+     if(input$id != ""){
+       validate(validate_id(gene_names = strsplit(input$id, split = ",")[[1]], models = input$var))
+       
+       reactive_data$labels <- strsplit(input$id, split = ",")[[1]]
+       #print(!sapply(c(logfc2 = input$logfc2, tRank = input$tRank, signcon = input$signcon), FUN = is.empty))
+       }
+      
      
      
-      validate(query.validate(list(logfc2 = input$logfc2, tRank = input$tRank, signcon = input$signcon)))
-      validate(validate_id(gene_names = strsplit(input$id, split = ",")[[1]], models = input$var))
-      reactive_data$labels <- strsplit(input$id, split = ",")[[1]]
+     else if(any(!sapply(c(logfc2 = input$logfc2, tRank = input$tRank, signcon = input$signcon), FUN = is.empty))){
+       #print(TRUE)
+        reactive_data$labels <- rownames(reactive_pull_query())
+      }
+      
+      
      
      
     
-      reactive_data$labels <- rownames(reactive_pull_query())
+      
      
      
      if(reactive_data$q_length > 60){
