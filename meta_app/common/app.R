@@ -1,6 +1,23 @@
 #ASTROYEAST MULTISTRESS WEBAPP
 #Author: Benjamin Clark 
 
+
+
+#License
+
+# © Copyright 2020 iGEM Concordia, Maher Hassanain, Benjamin Clark, Hajar Mouddene, Grecia Orlano
+# This file is part of AstroBio.
+# AstroBio is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or any later version.
+# AstroBio is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with AstroBio.  If not, see <https://www.gnu.org/licenses/>.
+
+
 library(shiny)
 library(GEOquery)
 library(Biobase)
@@ -15,6 +32,7 @@ source("custom_draw.R")
 suppressPackageStartupMessages(library(factoextra))
 source("metastudy_functions.R")
 load("data/appdata.RData")
+source("volcano_builder.R")
 
 
 #__________Error handling__________
@@ -57,10 +75,11 @@ query.validate <- function(input){
   else{
     return(NULL)
   }
-} 
+}
+
 
 forest_validate <- function(name, model){
-  if(name == ""){
+  if(name == "" || name == "Enter Common Gene Name"){
     return(FALSE)
   }
   else if(!(name %in% model$Symbol)){
@@ -70,9 +89,6 @@ forest_validate <- function(name, model){
     return(NULL)
   }
 }
-
-
-
 
 #____________Query Functions___________
 #helper functions for querying
@@ -307,7 +323,12 @@ ui <- fluidPage(
         tabsetPanel(type = "tabs",
           tabPanel("About", includeHTML("about.html")),
           tabPanel("Graphs", 
-            plotlyOutput("volcano"),
+            plotOutput("volcano", hover = "plot_hover", click = "plot_click"),
+            # fluidRow(column(3, textOutput("vname")),
+            #          column(3, textOutput("vfc")),
+            #          column(3, textOutput("vsign")),
+            #          column(3, textOutput("vpval"))),
+            verbatimTextOutput(outputId = "text_hover"),
             plotOutput("forest"),
             plotOutput("pca"),
             plotOutput("heat")
@@ -329,34 +350,67 @@ initial_txt <- function(string){
 
 server <- function(input, output) {
    
-  #Rendering HTML Output for the ABOUT page 
+  reactive_rem <- reactive({switch(input$var, 
+                                   "HeatShock" = rem_g5.v.he7@metaresult,
+                                   "Oxidative Stress" = rem_g5.v.ox6@metaresult,
+                                   "High Osmolarity" = rem_g5.v.osm6@metaresult,
+                                   "All of the Above"= all_rem@metaresult)}) 
   
   #Rendering main page graphs 
-   output$volcano <- renderPlotly({
+   output$volcano <- renderPlot({
             showNotification("Loading Plots...")
             switch(input$var, 
-            "HeatShock" = ggplotly(rem_g5.v.he7@MetaVolcano),
-            "Oxidative Stress" = ggplotly(rem_g5.v.ox6@MetaVolcano),
-            "High Osmolarity" = ggplotly(rem_g5.v.osm6@MetaVolcano),
-            "All of the Above"= ggplotly(all_rem@MetaVolcano))})
+            "HeatShock" = build_volcano(rem_g5.v.he7@metaresult),
+            "Oxidative Stress" = build_volcano(rem_g5.v.ox6@metaresult),
+            "High Osmolarity" = build_volcano(rem_g5.v.osm6@metaresult),
+            "All of the Above"= build_volcano(all_rem@metaresult))})
    
+   output$text_hover <- renderPrint({
+     
+     nearPoints(df = build_volcano(reactive_rem())$data, threshold = 10, maxpoints = 5, 
+                coordinfo = input$plot_hover) %>% dplyr::rename(Summary_Pval = randomP, Summary_LogFC = randomSummary, Sign_Consistency = signcon) 
+
+   })
    
 
-   
-   output$forest <- renderPlot({if(!(initial_txt(input$gene))){
-                                          
-                                          meta_degs_rem<- switch(input$var, 
-                                            "HeatShock" = rem_g5.v.he7,
-                                            "Oxidative Stress" = rem_g5.v.ox6,
-                                            "High Osmolarity" = rem_g5.v.osm6,
-                                            "All of the Above"= all_rem)
-                                          
-                                            validate(forest_validate(name = input$gene, model = meta_degs_rem@metaresult))
+   output$forest <- renderPlot({
+     if (!is.null(input$plot_click) &&
+         !plyr::empty(
+           nearPoints(
+             df = build_volcano(reactive_rem())$data,
+             threshold = 10,
+             maxpoints = 1,
+             coordinfo = input$plot_click
+           )
+         )) {
+       reactive_data$forest_name <-
+         nearPoints(
+           df = build_volcano(reactive_rem())$data,
+           threshold = 10,
+           maxpoints = 1,
+           coordinfo = input$plot_click
+         )$Symbol
+       
+     }
+     else{
+       validate(forest_validate(name = input$gene, model = reactive_rem()))
+       reactive_data$forest_name <- input$gene
+     }
+     meta_degs_rem <- switch(
+       input$var,
+       "HeatShock" = rem_g5.v.he7,
+       "Oxidative Stress" = rem_g5.v.ox6,
+       "High Osmolarity" = rem_g5.v.osm6,
+       "All of the Above" = all_rem
+     )
      
-                                            draw_forest2(remres = meta_degs_rem,
-                                            gene = input$gene,
-                                            draw = "")}
-                                            })
+     
+     
+     draw_forest2(remres = meta_degs_rem,
+                  gene = reactive_data$forest_name,
+                  draw = "")
+     
+   })
    
 
    
@@ -386,7 +440,8 @@ server <- function(input, output) {
      specific_labels = NULL,
      q_length = 0,
      show_label = c("all"),
-     row_label = FALSE
+     row_label = FALSE,
+     forest_name = NULL
    )
    
    build_pca_data <- reactive({prcomp((na.omit(pull_queried(query(varlist = list(all = TRUE), smodel = input$var), smodel = input$var))))})
@@ -396,14 +451,14 @@ server <- function(input, output) {
      
      
      
-     if(input$id != ""){
-       validate(validate_id(gene_names = strsplit(input$id, split = ",")[[1]], models = input$var))
-       reactive_data$labels <- strsplit(input$id, split = ",")[[1]]
-     }
+      validate(query.validate(list(logfc2 = input$logfc2, tRank = input$tRank, signcon = input$signcon)))
+      validate(validate_id(gene_names = strsplit(input$id, split = ",")[[1]], models = input$var))
+      reactive_data$labels <- strsplit(input$id, split = ",")[[1]]
      
-     else{
+     
+    
       reactive_data$labels <- rownames(reactive_pull_query())
-     }
+     
      
      if(reactive_data$q_length > 60){
        reactive_data$show_label <- c("var") 
@@ -429,6 +484,8 @@ server <- function(input, output) {
    
   
    output$heat <- renderPlot({
+     validate(query.validate(input = c(input$logfc2, input$tRank, input$signcon)))
+
      if(reactive_data$q_length < 100){
        reactive_data$row_label <- TRUE
      }
@@ -436,8 +493,8 @@ server <- function(input, output) {
        reactive_data$row_label <- FALSE
      }
      Heatmap(as.matrix(na.omit(pull_queried(reactive_query(), smodel = input$var))), heatmap_legend_param = list(title = "Log2FC"), show_row_names = reactive_data$row_label)})
-   
-   
+
+
    output$pca <- renderPlot({factoextra::fviz_pca_biplot(build_pca_data(), label = "var", col.var = "contrib", ggtheme = theme_classic())})
    output$download <- downloadHandler(filename = "AstroYeast_logfcs.csv", 
                                       content = function(file){
