@@ -19,15 +19,10 @@
 
 
 library(shiny)
-library(GEOquery)
 library(Biobase)
-library(limma)
-library(MetaVolcanoR)
-library(plotly)
 library(dplyr)
 library(sjmisc)
 library(ComplexHeatmap)
-library(ggplot2)
 source("custom_draw.R")
 suppressPackageStartupMessages(library(factoextra))
 source("metastudy_functions.R")
@@ -84,6 +79,15 @@ forest_validate <- function(name, model){
   }
   else if(!(name %in% model$Symbol)){
     return("Invalid Gene Name")
+  }
+  else{
+    return(NULL)
+  }
+}
+
+tab_validate <- function(tab_input){
+  if(tab_input == "About"){
+    return(FALSE)
   }
   else{
     return(NULL)
@@ -320,7 +324,7 @@ ui <- fluidPage(
       
       mainPanel(
         
-        tabsetPanel(type = "tabs",
+        tabsetPanel(type = "tabs", id = "panel",
           tabPanel("About", includeHTML("about.html")),
           tabPanel("Graphs", 
             plotOutput("volcano", hover = "plot_hover", click = "plot_click"),
@@ -434,7 +438,13 @@ server <- function(input, output) {
      })
    
    reactive_query <- reactive({
+     
      validate(query.validate(list(logfc2 = input$logfc2, tRank = input$tRank, signcon = input$signcon)))
+     if(input$panel == "About"){
+       showNotification("Navigate to the Graph tab to view results.", type = "message")
+       
+     }
+     
      query(varlist = list( logfc2 = input$logfc2, tRank = input$tRank, signcon = input$signcon), smodel = input$var)})
    
    output$table_summary <- renderText({
@@ -458,30 +468,33 @@ server <- function(input, output) {
    
    #When save ids is clicked, save them in session
    observeEvent(input$save, {
-     
-     if(input$id != ""){
-       validate(validate_id(gene_names = strsplit(input$id, split = ",")[[1]], models = input$var))
+     if (input$id != "") {
+       validate(validate_id(
+         gene_names = strsplit(input$id, split = ",")[[1]],
+         models = input$var
+       ))
        
        reactive_data$labels <- strsplit(input$id, split = ",")[[1]]
        #print(!sapply(c(logfc2 = input$logfc2, tRank = input$tRank, signcon = input$signcon), FUN = is.empty))
-       }
-      
+     }
      
      
-     else if(any(!sapply(c(logfc2 = input$logfc2, tRank = input$tRank, signcon = input$signcon), FUN = is.empty))){
+     
+     else if (any(!sapply(
+       c(
+         logfc2 = input$logfc2,
+         tRank = input$tRank,
+         signcon = input$signcon
+       ),
+       FUN = is.empty
+     ))) {
        #print(TRUE)
-        reactive_data$labels <- rownames(reactive_pull_query())
-      }
-      
-      
+       reactive_data$labels <- rownames(reactive_pull_query())
+     }
      
      
-    
-      
-     
-     
-     if(reactive_data$q_length > 60){
-       reactive_data$show_label <- c("var") 
+     if (reactive_data$q_length > 60) {
+       reactive_data$show_label <- c("var")
      }
      
      else{
@@ -489,30 +502,62 @@ server <- function(input, output) {
      }
      
      #print(reactive_data$labels)
-     output$pca <- renderPlot({factoextra::fviz_pca_biplot(build_pca_data(), label = reactive_data$show_label, 
-                                                           select.ind = list(name = reactive_data$labels), 
-                                                           col.var = "contrib", ggtheme = theme_classic(), repel = TRUE)
-                                                          
-                              }
-                             )
+     output$pca <-
+       renderPlot({
+         factoextra::fviz_pca_biplot(
+           build_pca_data(),
+           label = reactive_data$show_label,
+           select.ind = list(name = reactive_data$labels),
+           col.var = "contrib",
+           ggtheme = theme_classic(),
+           repel = TRUE
+         )
+         
+       })
      
-    })
+   })
    #resetting the biplot
    observeEvent(input$reset_pca, {
-     output$pca <- renderPlot({factoextra::fviz_pca_biplot(build_pca_data(), label = "var", col.var = "contrib", ggtheme = theme_classic(), repel = TRUE)})
+     output$pca <-
+       renderPlot({
+         factoextra::fviz_pca_biplot(
+           build_pca_data(),
+           label = "var",
+           col.var = "contrib",
+           ggtheme = theme_classic(),
+           repel = TRUE
+         )
+       })
    })
    
   
    output$heat <- renderPlot({
-     validate(query.validate(input = c(input$logfc2, input$tRank, input$signcon)))
-
-     if(reactive_data$q_length < 100){
+     validate(query.validate(input = c(
+       input$logfc2, input$tRank, input$signcon
+     )))#,
+     #tab_validate(tab_input = input$panels))
+     
+     
+     
+     if (reactive_data$q_length < 100) {
        reactive_data$row_label <- TRUE
      }
      else{
        reactive_data$row_label <- FALSE
      }
-     Heatmap(as.matrix(na.omit(pull_queried(reactive_query(), smodel = input$var))), heatmap_legend_param = list(title = "Log2FC"), show_row_names = reactive_data$row_label)})
+     
+     if (reactive_data$q_length > 0) {
+       Heatmap(
+         as.matrix(na.omit(
+           pull_queried(reactive_query(), smodel = input$var)
+         )),
+         heatmap_legend_param = list(title = "Log2FC"),
+         show_row_names = reactive_data$row_label
+       )
+     }
+   })
+      
+  
 
 
    output$pca <- renderPlot({factoextra::fviz_pca_biplot(build_pca_data(), label = "var", col.var = "contrib", ggtheme = theme_classic())})
