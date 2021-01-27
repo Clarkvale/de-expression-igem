@@ -2,9 +2,27 @@
 #Benjamin Clark
 
 library(enumerations)
-library(arrayQualityMetrics)
+
+
+#An enumeration for Microgravity types
 M.TYPE <- create.enum(c("HARV","RPM","HYPERBOLIC","SPACEFLOWN", "RCCS"))
 
+#Confidence intervals to standard error conversion
+ci2se <- function(CI.R, CI.L){
+  return((CI.R - CI.L)/3.92)
+}
+
+#The above function but applied to a topTable 
+topTable.SE <- function(topTable){
+  return(mapply(CI.R = topTable$CI.R, CI.L = topTable$CI.L, FUN = ci2se))
+}
+
+#Row wise OR evaluation for boolean matrices. Returns a vector of True row indices. 
+rowOR <- function(matrix){
+  return(as.vector(which(apply(matrix, MARGIN = 1, FUN = any))))
+}
+
+#Checks if an expression matrix has a logarithmic distribution
 logcheck <- function(expression_matrix){
   
   qx <- as.numeric(quantile(expression_matrix, c(0., 0.25, 0.5, 0.75, 0.99, 1.0), na.rm=T))
@@ -16,47 +34,66 @@ logcheck <- function(expression_matrix){
   
 }
 
-extractMetaData <- function(gse_groups, filename, microgravity_type, metaLabels, strain = ""){
+#Extracts metadata from your analysis. Will print a txt file for the whole study
+#as well as annotated design matrices in tabulated format.
+extractMetaData <- function(gse, design, contrasts,  filename, microgravity_type, 
+                            metaLabels, strain = "", cellType = ""){
   if(!is(microgravity_type, "character")){
     e <- simpleError("Not a valid microgravity type")
     stop(e)
   }
   
   
-  org <- gse_groups[[1]]$GSE$organism_ch1[[1]]
+  org <- gse$organism_ch1[[1]]
   if(strain != ""){
     org <- paste(org, strain, sep = " ")
   }
   
   
+  for(c in 1:length(contrasts)){
+    cols <- which(contrasts[[c]] != 0)
+    #print(cols)
+    gsms <- gse[,rowOR(design[,cols] != 0)]
+    
+    
+    titles <- gsms$title
+    descriptions <- gsms$description
+    accessions <-  gsms$geo_accession
+    
+    df <- data.frame(accessions = accessions, treatment = 
+                       titles, description = descriptions )
+    suppressWarnings(write.csv(df, paste(filename, "_", metaLabels[[c]], ".csv", sep = ""), append = FALSE))
+  }
   
   
   #wipe datatable if exists
   #write.table(data.frame(), paste(filename, ".csv", sep = ""), append = FALSE)
-  for(i in 1:length(gse_groups)){
-   gsms <- gse_groups[[i]]$GSE$geo_accession
-   titles <- gse_groups[[i]]$GSE$title
-   descriptions <- gse_groups[[i]]$GSE$description
-   write.csv(data.frame(accesssions = gsms, treatment = titles, description = descriptions), paste(filename, "_" ,metaLabels[[i]], ".csv", sep = ""), append = FALSE )
-  }
+  # for(i in 1:length(gse_groups)){
+  #  gsms <- gse_groups[[i]]$GSE$geo_accession
+  #  titles <- gse_groups[[i]]$GSE$title
+  #  descriptions <- gse_groups[[i]]$GSE$description
+  #  write.csv(data.frame(accesssions = gsms, treatment = titles, description = descriptions), 
+  #            paste(filename, "_" ,metaLabels[[i]], ".csv", sep = ""), append = FALSE )
+  # }
 
   #clean the directory
-  sink()
+  suppressWarnings(sink())
   unlink(paste(filename, ".txt", sep = ""))
   
   #append and create output
   sink(paste(filename, ".txt", sep = ""), append = TRUE)
   print(paste("ORGANISM:", org))
   print(paste("MICROGRAVITY TYPE:",microgravity_type))
+  print(paste("CELL TYPE:", cellType))
   
   
   
-  print(experimentData(gse_groups[[1]]$GSE))
+  print(experimentData(gse))
   
   sink()
   
 }
-
+#depreciated
 de.analysis <- function(microgravity_group, ground_group, gse){
   
   if (!(is(gse, "ExpressionSet") && is.vector(microgravity_group) && is.vector(ground_group))){
@@ -104,12 +141,14 @@ de.analysis <- function(microgravity_group, ground_group, gse){
   
   #select parameters we want for the output
   tT <- subset(tT, select=c("adj.P.Val","P.Value","t","B","logFC","Gene.symbol","Gene.title",
-                            "Platform_ORF", "GO.Function", "GO.Process", "GO.Component", "Chromosome.annotation","ID"))
+                            "Platform_ORF", "GO.Function", "GO.Process", "GO.Component", "Chromosome.annotation",
+                            "ID", "Gene.ID", "GO.Function.ID", "GO.Process.ID", "GO.Component.ID"))
   out.list <- list("TopTable" = tT, "GSE" = filtered.gse)
   return(out.list)
   
 } 
 
+#Looks up probes in a topTable that do not have an ORF identifier and removes them.
 remove.controls <- function(topTable){
   failed.probes <- which(topTable$Platform_ORF == "")
   passed.probes <- which(topTable$Platform_ORF != "")
