@@ -37,7 +37,7 @@ ses <- topTable.SE(tT)
 prob <- sapply(tT$B, plogis)
 
 #curating gene symbols
-aliases <- read_tsv("gene_aliases_20191231.txt")
+aliases <- read_tsv("datasets/GSE105058_Atha/gene_aliases_20191231.txt")
 matched <-  match(toupper(tT$Platform_ORF), aliases$name )
 
 matched_symbols <- aliases$symbol[matched]
@@ -56,6 +56,7 @@ out_tT <- tT %>% dplyr::select(adj.P.Val, P.Value, t, B, logFC, Gene.symbol,
                  dplyr::mutate(Standard.Error = ses, Probablity = prob) %>%
                  dplyr::rename(Entrez.ID = Gene.ID)
 
+output.tT <- pull.output.tT(tT)
 
 
 write.csv(out_tT, file = "datasets/GSE105058_Atha/GSE105058.csv")

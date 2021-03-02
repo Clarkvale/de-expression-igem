@@ -37,7 +37,7 @@ fit <- lmFit(y, mm)
 exp.Contrast <- makeContrasts(groupMG.exp - groupNG.exp , levels = colnames(coef(fit)))
 fit2 <- contrasts.fit(fit, exp.Contrast)
 fit2 <- eBayes(fit2)
-tT.exp <- topTable(fit2, n = Inf, adjust.method = "fdr")
+tT.exp <- topTable(fit2, n = Inf, adjust.method = "fdr", confint = T)
 
 
 #getting annotations 
@@ -47,19 +47,22 @@ anno  <-  anno %>% as.data.frame %>% filter(type == "exon") %>% select(-seqnames
 vmatch <- match(rownames(tT.exp),anno$gene_id)
 
 vmatch_id <- anno$gene_name[vmatch]
-tT.exp <- tT.exp %>% mutate(Gene.Symbol = vmatch_id, Platform.ORF = rownames(tT.exp)) %>% na.omit() 
+tT.exp <- tT.exp %>% mutate(Gene.Symbol = vmatch_id, Platform.ORF = rownames(tT.exp), 
+                            Probability = sapply(tT.exp$B, plogis), Standard.Error = ci2se(tT.exp$CI.R, tT.exp$CI.L)) %>% na.omit() 
 write.csv(tT.exp, file = "datasets/GSE147272_Ecol/GSE147272_exponential.growth.csv")
 
 #now for stationary phase
 sta.Contrast <- makeContrasts(groupMG.sta - groupNG.sta , levels = colnames(coef(fit)))
 fit3 <- contrasts.fit(fit, sta.Contrast)
 fit3 <- eBayes(fit3)
-tT.sta <- topTable(fit3, n = Inf, adjust.method = "fdr")
+tT.sta <- topTable(fit3, n = Inf, adjust.method = "fdr", confint = T)
 
 vmatch <- match(rownames(tT.sta),anno$gene_id)
 
+
 vmatch_id <- anno$gene_name[vmatch]
-tT.sta <- tT.sta %>% mutate(Gene.Symbol = vmatch_id, Platform.ORF = rownames(tT.sta)) %>% na.omit() 
+tT.sta <- tT.sta %>% mutate(Gene.Symbol = vmatch_id, Platform.ORF = rownames(tT.sta),
+                            Probability = sapply(tT.sta$B, plogis), Standard.Error = ci2se(tT.sta$CI.R, tT.sta$CI.L)) %>% na.omit() 
 write.csv(tT.sta, file = "datasets/GSE147272_Ecol/GSE147272_stationary.growth.csv")
 
 #getting metadata

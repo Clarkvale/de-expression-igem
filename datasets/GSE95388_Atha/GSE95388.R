@@ -22,13 +22,25 @@ treatment <- c(1,2,3,4,5)
 
 
 de <- de.analysis(microgravity_group = treatment,ground_group = control, gse  = gse)
-filtered.probes <- remove.controls(de$TopTable)
+tT <- pull.output.tT(de$TopTable)
+
+#annotating from local file
+aliases <- readr::read_tsv("datasets/GSE95388_Atha/gene_aliases_20191231.txt")
+matched <-  match(toupper(tT$Platform_ORF), aliases$name )
+
+matched_symbols <- aliases$symbol[matched]
+tT$Gene.symbol <- matched_symbols
+
+nas <- which(is.na(tT$Gene.symbol))
+tT$Gene.symbol[nas] <- tT$Platform_ORF[nas]
 
 tT.name <- "datasets/GSE95388_Atha/GSE95388.csv"
-write.table(filtered.probes$TopTable, tT.name, row.names = FALSE, sep = ",")
+write.table(tT, tT.name, row.names = FALSE, sep = ",")
 
 meta.name <- "datasets/GSE95388_Atha/GSE95388_meta"
 
+
+#cellType not added yet
 gse_list <- list(de)
 labels <- c("")
 extractMetaData(filename = meta.name, gse_groups = gse_list, microgravity_type = M.TYPE$SPACEFLOWN, metaLabels = labels, strain = "COL-0")

@@ -4,8 +4,8 @@
 library(GEOquery)
 library(Biobase)
 library(limma)
-library(arrayQualityMetrics)
-library(FoldGO)
+#library(arrayQualityMetrics)
+#library(FoldGO)
 library(GO.db)
 library(dplyr)
 source("microarray_functions.R")
@@ -26,25 +26,22 @@ fvarLabels(gse) <- make.names(fvarLabels(gse))
 
 
 
-# design <- cbind(DyeEffect = 1,SpaceVsGround = c(1,-1,1,-1,1,-1,1,-1))
-# #block <- fData(gse[,1])$Block
-# 
-# 
-# fit <- lmFit(gse,design)
-# fit <- eBayes(fit, 0.01)
-# 
-# #topTable.dyes <- topTable(fit, coef = "DyeEffect")
-# 
-# anno.data <- fData(gse)
-# 
-# f.tT <- remove.candida.controls(topTable.SvsG)
-# 
-# f.tT <- subset(f.tT, select = c("CGD_Systematic_Name", "Description", "SpaceVsGround", "AveExpr", "F", "P.Value", "adj.P.Val"))
+design <- cbind(DyeEffect = 1,SpaceVsGround = c(1,-1,1,-1,1,-1,1,-1))
+#block <- fData(gse[,1])$Block
 
-topTable.SvsG <- topTable(fit, adjust.method = "fdr", sort.by = "B", number = length(fit[[1]]))
+
+fit <- lmFit(gse,design)
+fit <- eBayes(fit, 0.01)
+
+topTable.dyes <- topTable(fit, coef = "DyeEffect")
+
+anno.data <- fData(gse)
+
+
+topTable.SvsG <- topTable(fit, adjust.method = "fdr",  coef = "SpaceVsGround", sort.by = "B", number = length(fit[[1]]), confint = TRUE)
 f.tT <- remove.candida.controls(topTable.SvsG)
 
-f.tT <- subset(f.tT, select = c("CGD_Systematic_Name", "Description", "SpaceVsGround", "AveExpr", "F", "P.Value", "adj.P.Val", "SPOT_ID", "ID"))
+#f.tT <- subset(f.tT, select = c("CGD_Systematic_Name", "Description", "logFC", "AveExpr", "t", "P.Value", "adj.P.Val", "SPOT_ID", "ID", "B", "CI.L", ))
 
 
 
@@ -82,56 +79,56 @@ ordered.gos <- list()
 for(annos in 1:length(rm.ftT$CGD_Systematic_Name)){
   indexes <- which(rm.ftT$CGD_Systematic_Name[annos] == go_ids$systemic_id)
   ids <- go_ids$go_id[indexes]  
-  ordered.gos[annos] <- list(ids)
+  ordered.gos[rm.ftT$CGD_Systematic_Name[annos]] <- list(ids)
+  
+}
+#expects go ids in a vector contained in a list 
+make.GO.table <- function(GOIDs){
+  GOIDs <- unname(unlist(GOIDs))
+  #GOIDs <- as.vector(unname(sapply(full.BP.ID[1], FUN = function(x){return(strsplit(x, "///")[[1]])})))
+  return(data.frame(ID = GOIDs, ontology = Ontology(GOIDs), term = Term(GOIDs)))
+}
+
+
+
+go_tables <- lapply(ordered.gos, FUN = make.GO.table)
+
+#setting up null columns 
+rm.ftT <- rm.ftT %>% mutate(GO.Function = rep(NA, length(rownames(rm.ftT))),
+                            GO.Function.ID = rep(NA, length(rownames(rm.ftT))),
+                            GO.Component = rep(NA, length(rownames(rm.ftT))),
+                            GO.Component.ID = rep(NA, length(rownames(rm.ftT))),
+                            GO.Process = rep(NA, length(rownames(rm.ftT))),
+                            GO.Process.ID = rep(NA, length(rownames(rm.ftT))))
+
+apply_gos <- function(tT, GO_tables){
+  gene_ind <- which(names(GO_tables) == tT$CGD_Systematic_Name)
+  
+  if(length(GO_tables[1]) != 0){
+    #Function
+    f.rows <- filter(GO_tables[[1]], ontology == "MF")
+    while(!is.null(f.rows)){
+      tT$GO.Function[gene_ind] <- paste(f.rows$term, collapse = "///")
+      tT$GO.Function.ID[gene_ind] <- paste(f.rows$ID, collapse = "///")
+      #Process
+      f.rows <- filter(GO_tables[[1]], ontology == "BP")
+      tT$GO.Process[gene_ind] <-  paste(f.rows$term, collapse = "///")
+      tT$GO.Process.ID[gene_ind] <- paste(f.rows$ID, collapse = "///")
+      #Component
+      f.rows <- filter(GO_tables[[1]], ontology == "CC")
+      tT$GO.Component[gene_ind] <- paste(f.rows$term, collapse = "///")
+      tT$GO.Component.ID[gene_ind] <- paste(f.rows$ID, collapse = "///")
+      break
+    }
+  }
+  return(tT)
+  
+}
+for(i in 1:length(go_tables)){
+  rm.ftT <- apply_gos(tT = rm.ftT, GO_tables = go_tables[i])
   
 }
 
-anno.terms <- list()
-full.MF <- c()
-full.CC <- c()
-full.BP <- c()
-for(i in 1:length(ordered.gos)){
-  GO.PROCESS <- c()
-  GO.FUNCTION <- c()
-  GO.COMPONENT <- c()
-  if(length(ordered.gos[[i]]) == 0){
-   full.MF <- append(full.MF, NA)
-   full.CC <-  append(full.CC, NA) 
-   full.BP <- append(full.BP, NA)
-   next
-  }
-  for(j in 1:length(ordered.gos[[i]])){
-    
-    if(Ontology(ordered.gos[[i]][[j]]) == "MF"){
-      GO.FUNCTION <- append(GO.FUNCTION, Term(ordered.gos[[i]][[j]]))
-      
-    }else if(Ontology(ordered.gos[[i]][[j]]) == "CC"){
-      GO.COMPONENT <- append(GO.COMPONENT, Term(ordered.gos[[i]][[j]]))
-      
-    }
-    else if(Ontology(ordered.gos[[i]][[j]]) == "BP"){
-      GO.PROCESS <- append(GO.PROCESS, Term(ordered.gos[[i]][[j]]))
-      
-    }
-    
-  }
-  if(length(GO.FUNCTION) != 0){
-    full.MF <- append(full.MF, paste(GO.FUNCTION, collapse = "///"))}
-  else{
-    full.MF <- append(full.MF, NA)
-  }
-  if(length(GO.PROCESS) != 0){
-    full.BP <- append(full.BP, paste(GO.PROCESS, collapse = "///"))}
-  else{
-    full.BP <- append(full.BP, NA)
-  }
-  if(length(GO.COMPONENT) != 0){
-    full.CC <- append(full.CC, paste(GO.COMPONENT, collapse = "///"))}
-  else{
-    full.cc <- append(full.cc, NA)
-  }
-  #anno.terms[[anno.data$CGD_Systematic_Name[i]]] <- list(GO.FUNCTION = GO.FUNCTION, GO.COMPONENT = GO.COMPONENT, GO.PROCESS = GO.PROCESS)
-}
 names <- sapply(rm.ftT$Description, USE.NAMES = FALSE, FUN = function(x){
   if(startsWith(x , prefix = "|")){
     return(NA)
@@ -145,12 +142,16 @@ names <- unlist(names)
 Chromosome_Location <- stringr::str_extract_all(rm.ftT$Description, pattern = "(Contig\\d+:\\D+\\d+..\\d+\\)|Contig\\d+:\\d+..\\d+)")
 Chromosome_Location <- sapply(Chromosome_Location, FUN = paste, collapse = "///", USE.NAMES = FALSE)
 
-final.tT <- rm.ftT %>% mutate( GO.Function = full.MF, GO.Component = full.CC, 
-                               GO.Process = full.BP, Gene.Name = names, 
-                               Chromosome.Location = Chromosome_Location, 
-                               ID = NULL, SPOT_ID = NULL, Description = NULL) %>% 
-          rename(LogFC = SpaceVsGround, Platform_ORF = CGD_Systematic_Name)
 
+final.tT <- rm.ftT %>% mutate(
+                               Gene.symbol = names, 
+                               Chromosome.Location = Chromosome_Location, 
+                               ID = NULL, SPOT_ID = NULL, Description = NULL,
+                               SEQUENCE = NULL, Block = NULL, Column = NULL, Row = NULL,
+                               Standard.Error = topTable.SE(rm.ftT), Probability = sapply(rm.ftT$B, plogis)) %>% 
+          rename( Platform_ORF = CGD_Systematic_Name)
+
+#final.tT <- pull.output.tT(final.tT)
 
 write.csv(final.tT, file = "datasets/GSE50881_Calb/GSE50881.csv")
 

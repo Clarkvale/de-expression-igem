@@ -16,7 +16,7 @@
 # along with AstroBio.  If not, see <https://www.gnu.org/licenses/>.
 
 library(enumerations)
-
+library(dplyr)
 
 #An enumeration for Microgravity types
 M.TYPE <- create.enum(c("HARV","RPM","HYPERBOLIC","SPACEFLOWN", "RCCS"))
@@ -107,7 +107,25 @@ extractMetaData <- function(gse, design, contrasts,  filename, microgravity_type
   sink()
   
 }
-#depreciated
+
+pull.output.tT <- function(tT){
+  ses <- ci2se(tT$CI.R, tT$CI.L)
+  prob <- sapply(tT$B, plogis)
+  out_tT <- tT %>% dplyr::select(adj.P.Val, P.Value, t, B, logFC, Gene.symbol, 
+                                 Gene.title, Platform_ORF, GO.Function, GO.Function.ID,
+                                 GO.Process, GO.Process.ID, GO.Component, GO.Component.ID,
+                                 Chromosome.annotation, ID, Gene.ID) %>% 
+    
+    dplyr::mutate(Standard.Error = ses, Probablity = prob) %>%
+    dplyr::rename(Entrez.ID = Gene.ID)
+  
+  out_tT <- remove.controls(out_tT)$TopTable
+  return(out_tT)
+  
+}
+  
+  
+#depreciated, only to be used if the experiment contains one contrast (0g vs g) and is a single channel chip
 de.analysis <- function(microgravity_group, ground_group, gse){
   
   if (!(is(gse, "ExpressionSet") && is.vector(microgravity_group) && is.vector(ground_group))){
@@ -148,15 +166,15 @@ de.analysis <- function(microgravity_group, ground_group, gse){
   fit2 <- eBayes(fit2, 0.01)
   
   #pulling the whole fitted microarray dataset and ordering by B value 
-  tT <- topTable(fit2, adjust="fdr", sort.by="B", number = length(fit2[[1]]))
+  tT <- topTable(fit2, adjust="fdr", sort.by="B", number = Inf, confint = TRUE)
   
   #We can get rid of the "number" argument and replace it with lfc = 2 for a log2 fold change of 2
   #tT <- topTable(fit2, adjust="fdr", sort.by="B", lfc = 2)
   
   #select parameters we want for the output
-  tT <- subset(tT, select=c("adj.P.Val","P.Value","t","B","logFC","Gene.symbol","Gene.title",
-                            "Platform_ORF", "GO.Function", "GO.Process", "GO.Component", "Chromosome.annotation",
-                            "ID", "Gene.ID", "GO.Function.ID", "GO.Process.ID", "GO.Component.ID"))
+  #tT <- subset(tT, select=c("adj.P.Val","P.Value","t","B","logFC","Gene.symbol","Gene.title",
+   #                         "Platform_ORF", "GO.Function", "GO.Process", "GO.Component", "Chromosome.annotation",
+    #                        "ID", "Gene.ID", "GO.Function.ID", "GO.Process.ID", "GO.Component.ID"))
   out.list <- list("TopTable" = tT, "GSE" = filtered.gse)
   return(out.list)
   
