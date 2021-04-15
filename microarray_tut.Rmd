@@ -1,0 +1,264 @@
+---
+title: "tutorial"
+author: "Benjamin Clark"
+date: "14/04/2021"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Initializing
+
+Everytime you make a new R script you'll need to be working out of the project directory. To start click project tab in the top-right corner and select "de-expression-igem". Now to make sure R knows the context for pathing to different files,  we need to set the working directory to that of the project. Click on Session  -> Set Working Directory -> To Project Directory. Code should run in your console and it should depend on where you dumped your repo within your computer. 
+
+Now we need to load up our packages and functions
+
+```{r, echo= FALSE}
+library(GEOquery)
+library(Biobase)
+library(limma)
+library(dplyr)
+source("microarray_functions.R")
+```
+
+If the above code didn't work you either need to install the packages by running the code in setup.R OR you didn't change to the right working directory
+
+Moving on!
+
+## Pulling Data from GEO
+
+This is actually very easy. We use our handy GEOquery package and simply give getGEO() the code for the study.
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
+gse <- getGEO("GSE4136", GSEMatrix =TRUE, AnnotGPL=TRUE)[[1]]
+#getGEO returns a list in case we have a superseries of studies. In our case i think we are always working with one. This is why we pull the #first element using [[1]] 
+
+```
+
+## Exploring the Study
+
+Let's explore our gse object a bit. Imagine that its a container for the experiment's metadata (Authors, lab location, etc), probe level metadata (gene names, entrez codes, chromosome location etc) and the matrices for each replicate in the study. These are accessed using a variety of BioBase functions that I'll get to, for now lets crack open the top level information.
+
+```{r}
+
+#Here are the titles assocated with each replicate (replicate here meaning everytime we pass some cDNA that has had some treatment over a chip). The order is important as it reflects the order of the columns which store the fluorescence data. Try running them one at a time to see what they return.
+gse$geo_accession
+
+gse$title
+
+gse$description
+
+gse$scan_protocol[[1]]
+
+```
+What does our expression data look like anyways?
+```{r}
+head(exprs(gse))
+#for a better look use the View() function
+
+```
+This is actually a very large table, owing the fact that each chip has ~10k probes and there a 12 of them!
+```{r}
+dim(exprs(gse))
+```
+
+Now lets look at the probe level annotation data
+```{r}
+head(fData(gse))
+```
+You can see here every probe (row) has a gene name and extra data associated with it. The functions I have written to extract this information rely on these column names (made by affymetrix or some annotation software). There may be cases that the column names are different or that not all the info we care about is there. If thats the case then we'll cross that bridge when we get there.
+
+## QA
+
+We need to check if our data is good in the first place and whether we need to normalize it to work out the bumps. First lets check to see if our data has been log transformed:
+
+```{r}
+logcheck(exprs(gse))
+
+```
+Looks like it hasn't, lets fix that quickly.
+
+```{r}
+exprs(gse)[which( exprs(gse) <= 0)] <- NaN
+exprs(gse) <- log2(exprs(gse))
+```
+
+There are two major ways I assess microarray qualities. The first is a boxplot, simply just seeing if the medians are aligned for each array.
+
+```{r}
+boxplot(exprs(gse))
+```
+This one looks great! They don't always look like this though.
+```{r, echo = FALSE, include=FALSE}
+gse2 <- getGEO("GSE71771",GSEMatrix = T, AnnotGPL = T)
+
+ex <- exprs(gse2$GSE71771_series_matrix.txt.gz)
+ex[which(ex <= 0)] <- NaN
+ex <- log2(ex)
+
+```
+
+```{r, echo=FALSE}
+boxplot(ex)
+```
+We can see here in the above graph that there's some bias in the distributions. 
+
+The more useful plot (imo) are Density plots. Density plots are (without getting into the theory) a way of showing probability distributions at specific data points across the matrices.
+```{r}
+plotDensities(exprs(gse))
+```
+
+
+
+This one is a good example of an excellent distribution, where we have a long end on the left side and short tail on the other. All samples align roughly at -2 with no major variations.
+
+Let's look at some bad ones. 
+
+```{r echo=FALSE}
+plotDensities(ex, legend = FALSE)
+```
+
+This is the same data used to generate the bad boxplot we saw before. Notice how we found some hidden variation in the red line that we didn't see before. While this one is clearly all over the place there are more subtle situations.
+
+```{r include=FALSE, echo=FALSE}
+list.gse <- getGEO("GSE95388", GSEMatrix =TRUE, AnnotGPL=TRUE)
+
+gse3 <- list.gse[[1]]
+ex3 <- exprs(gse3)
+ex3[which(ex3 <= 0)] <- NaN
+ex3 <- log2(ex3)
+
+```
+
+```{r echo=FALSE}
+plotDensities(ex3, legend = FALSE)
+
+```
+
+The the first bump is evidence of saturation, a common error with microarrays. This amount is excusable though. There are situations however that saturation will make a study unusable.
+
+```{r include=FALSE, echo=FALSE}
+list.gse2 <- getGEO("GSE64468", GSEMatrix =TRUE, AnnotGPL=TRUE)
+
+gse4 <- list.gse2[[1]]
+ex4 <- exprs(gse4)
+ex4[which(ex4 <= 0)] <- NaN
+ex4 <- log2(ex4)
+
+```
+
+```{r echo=FALSE}
+plotDensities(ex4, legend = FALSE)
+
+```
+
+There are plenty of other ways we can look at our data, but for our purposes this is enough. 
+
+## Limma 
+
+Let's do some differential expression analysis using Limma. The main goal is to separate the two groups we want on the basis of their treatments and build a design matrix. In the study we were working with before we had RNA extracted at two different time points, 5th and 25th generations. We need to include this in our design and ask Limma to model it.
+
+```{r include=TRUE}
+#format variable names
+fvarLabels(gse) <- make.names(fvarLabels(gse))
+
+#This is my levels array, just a short list of descriptors for each sample. Notice how I'm including both "NG" and "MG" for "normal gravity" and #vice versa and the generation number.
+levs <- c(rep("NG.5", 3), rep("NG.25",3),rep("MG.5",3), rep("MG.25",3))
+
+#this is a way of recreating a very literal design matrix that we'll use later
+targets <- data.frame(cbind(GSE = gse$geo_accession, Target = levs))
+
+#grab the factors from our targets dataframe
+f <- factor(targets$Target, levels = unique(levs))
+
+#build a proper design matrix that limma can use
+design <- model.matrix(~0+f)
+
+#get rid of the "f"s that R tacks on
+colnames(design) <- unique(levs)
+
+#fit the data to a linear model
+fit <- lmFit(gse, design)
+
+
+#Now we need to ask limma to draw contrasts between the groups we want to compare. It is important we get the direction right, with the treated #sample VS the null samples  
+
+#5th gen, the names have to match our design names we made before
+cont.dif.5 <- makeContrasts(
+  Dif5 = MG.5 - NG.5,
+  levels = design
+)
+
+#fit the contrasts now
+contrasts.fit <- contrasts.fit(fit, contrasts = cont.dif.5)
+
+#limma can use naive bayes reduce p values even further by borrowing neighboring values.
+fit2 <- eBayes(contrasts.fit, 0.01)
+
+#Here we pull a toptable which will return all our logfc values and (hopefully) annotation data
+g.tT5 <- topTable(fit2, adjust.method = "fdr", confint = TRUE, number = Inf)
+
+
+#Save our data to a flat csv file. NOTE the function pull.output.tT() ONLY works on affymetrix microarrays. You'll have pull the info manually #otherwise. I suggest using dplyr
+#Since we are still in the project directory we still need to walk down the repo to the sub directory the R file is in to save it.
+gen5name <- "datasets/GSE4136_Scer/GSE4136_5thGen.csv"
+
+#NOT run for this example 
+#write.table(pull.output.tT(g.tT5), gen5name, row.names = FALSE, sep = ",")
+
+
+
+#now for 25th generation
+cont.dif.25 <- makeContrasts(
+  Dif25 = MG.25 - NG.25,
+  levels = design
+)
+
+contrasts.fit <- contrasts.fit(fit, contrasts = cont.dif.25)
+fit2 <- eBayes(contrasts.fit, 0.01)
+g.tT25 <- topTable(fit2, adjust.method = "fdr", confint = TRUE, number = Inf)
+
+gen25name <- "datasets/GSE4136_Scer/GSE4136_25thGen.csv"
+
+#NOT run for this example
+#write.table(pull.output.tT(g.tT25), gen25name, row.names = FALSE, sep = ",")
+
+```
+
+That was alot! Let's just check what ended up with:
+
+```{r echo=TRUE}
+head(pull.output.tT(g.tT5))
+```
+
+
+The last thing we need to do is print out some metadata. There are two files for each comparison we made, a text file which dumps all the study info and another csv file which describes the comparisons we made. Big warning on this one: the function I made is not very stable. This is probably because I over-engineered it (oops). The idea is that you can give it all the info and it makes all those files at once. If it whines it probably means you need to twist the inputs into something it likes.
+```{r eval=FALSE}
+#one general name for all the meta files
+metaName <- "datasets/GSE4136_Scer/GSE4136_meta"
+
+
+strain <- "BY4743"
+
+
+#one label for each comparison we made
+labels <- c("5thGen", "25thGen")
+
+#microgravity_type needs to be derived from M.TYPE, design is the output from our model matrix, contrasts is a LIST of separate contrasts made from #make.Contrasts()
+
+extractMetaData(gse = gse, metaLabels = labels, 
+                microgravity_type = M.TYPE$HARV, design = design, 
+                contrasts = list(cont.dif.5, cont.dif.25), strain = strain,
+                filename = metaName)
+```
+
+Now push a new branch using git and thats it!
+
+```{bash eval=FALSE}
+git checkout -b GSE4136
+git add --all
+git commit -m new study 
+git push -u origin GSE4136
+
+```

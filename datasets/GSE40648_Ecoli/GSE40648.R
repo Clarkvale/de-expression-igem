@@ -85,7 +85,7 @@ add.go.tT <- function(tT, goTable, pos){
     tT$GO.Function.ID[pos] <- "GO:0003674"
   }
   
-  if(any(grepl(select(goTable, ontology)[,1], pattern = "BP"))){
+  if(any(grepl(dplyr::select(goTable, ontology)[,1], pattern = "BP"))){
     tT$GO.Process[pos] <- paste(dplyr::filter(goTable, ontology == "BP")$term , collapse = "///")
     tT$GO.Process.ID[pos] <- paste(dplyr::filter(goTable, ontology == "BP")$id, collapse = "///")
   }
@@ -94,7 +94,7 @@ add.go.tT <- function(tT, goTable, pos){
     tT$GO.Process.ID[pos] <- "GO:0050789"
   }
   
-  if(any(grepl(select(goTable, ontology)[,1], pattern = "CC"))){
+  if(any(grepl(dplyr::select(goTable, ontology)[,1], pattern = "CC"))){
     tT$GO.Component[pos] <- paste(dplyr::filter(goTable, ontology == "CC")$term , collapse = "///")
     tT$GO.Component.ID[pos] <- paste(dplyr::filter(goTable, ontology == "CC")$id, collapse = "///")
   }
@@ -155,9 +155,7 @@ for(i in 1:length(names(go.genome))){
     }
     
   }
-  
-
-  
+ 
 }
 
 
