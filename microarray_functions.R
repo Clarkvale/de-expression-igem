@@ -107,7 +107,7 @@ extractMetaData <- function(gse, design, contrasts,  filename, microgravity_type
   sink()
   
 }
-
+#pulls columns from affymetrix-styled arrays
 pull.output.tT <- function(tT){
   ses <- ci2se(tT$CI.R, tT$CI.L)
   prob <- sapply(tT$B, plogis)
