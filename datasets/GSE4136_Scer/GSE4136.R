@@ -49,8 +49,8 @@ contrasts.fit <- contrasts.fit(fit, contrasts = cont.dif.5)
 fit2 <- eBayes(contrasts.fit, 0.01)
 g.tT5 <- topTable(fit2, adjust.method = "fdr", confint = TRUE, number = Inf)
 
-ses <- topTable.SE(g.tT5)
-prob <- sapply(g.tT5$B, plogis)
+gen5name <- "datasets/GSE4136_Scer/GSE4136_5thGen.csv"
+write.table(pull.output.tT(g.tT5), gen5name, row.names = FALSE, sep = ",")
 
 
 
@@ -64,7 +64,20 @@ contrasts.fit <- contrasts.fit(fit, contrasts = cont.dif.25)
 fit2 <- eBayes(contrasts.fit, 0.01)
 g.tT25 <- topTable(fit2, adjust.method = "fdr", confint = TRUE, number = Inf)
 
+gen25name <- "datasets/GSE4136_Scer/GSE4136_25thGen.csv"
+write.table(pull.output.tT(g.tT25), gen25name, row.names = FALSE, sep = ",")
 
+
+
+
+metaName <- "datasets/GSE4136_Scer/GSE4136_meta"
+strain <- "BY4743"
+
+labels <- c("5thGen", "25thGen")
+extractMetaData(gse = gse, metaLabels = labels, 
+                microgravity_type = M.TYPE$SPACEFLOWN, design = design, 
+                contrasts = list(cont.dif.5, cont.dif.25), strain = strain,
+                filename = metaName)
 
 
 

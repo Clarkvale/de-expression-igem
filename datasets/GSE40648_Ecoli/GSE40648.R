@@ -8,6 +8,8 @@ library(Biobase)
 library(limma)
 library(org.EcK12.eg.db)
 source("microarray_functions.R")
+library(GO.db)
+library(dplyr)
 #This pulls the all the samples from the microarry dataset. This returns a list containing a single expressionSet object. 
 list.gse <- getGEO("GSE40648", GSEMatrix =TRUE, AnnotGPL=TRUE)
 
@@ -33,14 +35,15 @@ ecoli <- de.analysis(gse = gse.rm, microgravity_group = treatment, ground_group 
 
 #print out the toptable 
 ecoliname <- "datasets/GSE40648_Ecoli/GSE40648_Ecoli.csv"
-write.table(ecoli$TopTable, ecoliname, row.names = FALSE, sep = ",")
-remove.controls(ecoli$TopTable)
-filtered.tT <- remove.controls(ecoli$TopTable)
+out_tT <- pull.output.tT(ecoli$TopTable)
+
+
+
 
 
 
 #adding new GO ids
-symbols <- filtered.tT$TopTable$Gene.symbol
+symbols <- out_tT$Gene.symbol
 symbols.1 <- sapply(symbols, FUN = function(x){return(strsplit(x, "///")[[1]][1])})
 names(symbols.1) <- NULL
 symbols.1 <- as.vector(symbols.1)
@@ -49,12 +52,61 @@ esym <- org.EcK12.egSYMBOL2EG
 esym <- as.list(esym)
 entrez_ids <- unlist(esym[symbols.1])
 
+#for whatever reason the entrez ids supplied by GEO are mapping poorly to the 
+#annotationDB so I need to use the above code for some extra mapping from gene symbols
 
+#lets use all of them for good measure, i need to make sure i can still use gene symbols later for mapping 
+geo_entrez_ids <-  out_tT$Entrez.ID 
+geo_entrez_ids <- sapply(geo_entrez_ids, FUN = function(x){return(strsplit(x, "///")[[1]][1])})
+names(geo_entrez_ids) <- out_tT$Gene.symbol
+
+
+
+#combining the two
+entrez_ids <- union(entrez_ids, geo_entrez_ids)
+
+#mapping gos to our ids
 gos <- org.EcK12.egGO
 gos <- as.list(gos)
 
-mapped_gos <- gos[entrez_ids]
+mapped_gos<- gos[entrez_ids]
+mapped_gos <- mapped_gos[which(!is.na(names(mapped_gos)))]
 
+
+add.go.tT <- function(tT, goTable, pos){
+  
+  if(any(grepl(dplyr::select(goTable, ontology)[,1], pattern = "MF"))){
+    tT$GO.Function[pos] <- paste(dplyr::filter(goTable, ontology == "MF")$term , collapse = "///")
+    tT$GO.Function.ID[pos] <- paste(dplyr::filter(goTable, ontology == "MF")$id, collapse = "///")
+  }
+  #GO ancestor ids are apparently not packaged with annoDB, these ones are found here:https://www.ebi.ac.uk/QuickGO/
+  else{
+    tT$GO.Function[pos]<- "molecular_function"
+    tT$GO.Function.ID[pos] <- "GO:0003674"
+  }
+  
+  if(any(grepl(select(goTable, ontology)[,1], pattern = "BP"))){
+    tT$GO.Process[pos] <- paste(dplyr::filter(goTable, ontology == "BP")$term , collapse = "///")
+    tT$GO.Process.ID[pos] <- paste(dplyr::filter(goTable, ontology == "BP")$id, collapse = "///")
+  }
+  else{
+    tT$GO.Process[pos] <- "regulation of biological process"
+    tT$GO.Process.ID[pos] <- "GO:0050789"
+  }
+  
+  if(any(grepl(select(goTable, ontology)[,1], pattern = "CC"))){
+    tT$GO.Component[pos] <- paste(dplyr::filter(goTable, ontology == "CC")$term , collapse = "///")
+    tT$GO.Component.ID[pos] <- paste(dplyr::filter(goTable, ontology == "CC")$id, collapse = "///")
+  }
+  else{
+    tT$GO.Component[pos] <- "cellular_component"
+    tT$GO.Component.ID[pos]<- 'GO:0005575'
+  }
+  return(tT)
+  
+}
+ 
+#getting go terms for my tables
 go.db <- as.list(GO.db::GOTERM)
 anno.go.genome <- function(go.ids){
   out <- list()
@@ -77,38 +129,41 @@ anno.go.genome <- function(go.ids){
   }
   return(out)
 }
+
+eck12.names <- as.list(org.EcK12.egSYMBOL)
+#mapping mined GOs to our toptable, this else if chain is kinda ugly but it do
+#this is me just refusing to vectorize this for some reason, it very slow
 go.genome <- anno.go.genome(mapped_gos)
-valid_ids <- c()
-for(i in 1:length(entrez_ids)){
-  if(length(go.genome[[entrez_ids[i]]]$ontology) > 0){  
-    GO.Function <- paste(dplyr::filter(go.genome[[entrez_ids[i]]], ontology == "MF")$term , collapse = "///")
-    GO.Process <- paste(dplyr::filter(go.genome[[entrez_ids[i]]], ontology == "BP")$term , collapse = "///")
-    GO.Component <- paste(dplyr::filter(go.genome[[entrez_ids[i]]], ontology == "CC")$term , collapse = "///")
+valid_ind <- match(names(go.genome), out_tT$Entrez.ID)
+for(i in 1:length(names(go.genome))){
+  if(!is.na(valid_ind[i])){
+    
+    if((!is.null(go.genome[[i]]$ontology))){  
+      go_entry <- go.genome[[i]]
+      
+      out_tT <- add.go.tT(out_tT, go_entry, i)
+    }
+    else{
+      next
+    }
   }
   else{
-    next
+    if((!is.null(go.genome[[i]]$ontology))){
+      go_entry <- go.genome[[i]]
+      ided.rows <- grep(out_tT$Gene.symbol, pattern = eck12.names[names(go.genome[i])])
+      out_tT <- add.go.tT(out_tT, goTable = go_entry, pos = ided.rows)
+    }
+    
   }
   
-  ided.rows <- grep(filtered.tT$TopTable$Gene.symbol, pattern = names(entrez_ids[i]))
-  correct.probe <-  which.min(filtered.tT$TopTable[ided.rows,]$P.Value)
-  
-  filtered.tT$TopTable$GO.Function[ided.rows[correct.probe]] <- GO.Function
-  
-  filtered.tT$TopTable$GO.Component[ided.rows[correct.probe]] <- GO.Component
-  
-  filtered.tT$TopTable$GO.Process[ided.rows[correct.probe]] <- GO.Process
-  
-  
-  valid_ids <- append(valid_ids, ided.rows[correct.probe])
-  
+
   
 }
-valid_ids <- valid_ids[-which(duplicated(valid_ids))]
-filtered.tT$TopTable <- filtered.tT$TopTable[valid_ids,]
 
 
 
-write.table(filtered.tT$TopTable, ecoliname, row.names = FALSE, sep = ",")
+
+write.table(remove.controls(out_tT)$TopTable, ecoliname, row.names = FALSE, sep = ",")
 
 
 #process and extract metadata for all datasets comparisons
@@ -117,5 +172,5 @@ metaName <- "datasets/GSE40648_Ecoli/GSE40648_meta"
 strain <- "K12 MG1655"
 gse_list <- list(ecoli)
 labels <- c("ecoli")
-extractMetaData(filename = metaName, gse_groups = gse_list, microgravity_type = M.TYPE$RPM, metaLabels = labels, strain = strain)
+#extractMetaData(filename = metaName, gse_groups = gse_list, microgravity_type = M.TYPE$RPM, metaLabels = labels, strain = strain)
 
