@@ -49,9 +49,9 @@ logcheck <- function(expression_matrix){
 }
 
 #Extracts metadata from your analysis. Will print a txt file for the whole study
-#as well as annotated design matrices in tabulated format.
+#as well as annotated design matrices in tabulated format. 'contrasts' MUST be in list for this to work 
 extractMetaData <- function(gse, design, contrasts,  filename, microgravity_type, 
-                            metaLabels, strain = "", cellType = ""){
+                            metaLabels, strain = "", cellType = "", description_label = NA){
   if(!is(microgravity_type, "character")){
     e <- simpleError("Not a valid microgravity type")
     stop(e)
@@ -63,32 +63,32 @@ extractMetaData <- function(gse, design, contrasts,  filename, microgravity_type
     org <- paste(org, strain, sep = " ")
   }
   
-  
+  #iterate through the contrasts matrices
   for(c in 1:length(contrasts)){
+    #for each contrast matrix pull the columns which we are comparing
     cols <- which(contrasts[[c]] != 0)
-    #print(cols)
+    #Get the gsms (rows) pertaining to the columns we selected above, 
+    #a gsm is selected on the basis it has at least one non-zero number in the 
+    #row within the design matrix 
     gsms <- gse[,rowOR(design[,cols] != 0)]
     
-    
+    #pulling general info
     titles <- gsms$title
-    descriptions <- gsms$description
+    if(any(grepl("description", varLabels(gsms), ignore.case = T)) && is.na(description_label)){
+      descriptions <- gsms$description
+    }
+    else{
+      descriptions <- description_label
+    }
     accessions <-  gsms$geo_accession
-    
+    #writing design dataframes
     df <- data.frame(accessions = accessions, treatment = 
                        titles, description = descriptions )
     suppressWarnings(write.csv(df, paste(filename, "_", metaLabels[[c]], ".csv", sep = ""), append = FALSE))
   }
   
   
-  #wipe datatable if exists
-  #write.table(data.frame(), paste(filename, ".csv", sep = ""), append = FALSE)
-  # for(i in 1:length(gse_groups)){
-  #  gsms <- gse_groups[[i]]$GSE$geo_accession
-  #  titles <- gse_groups[[i]]$GSE$title
-  #  descriptions <- gse_groups[[i]]$GSE$description
-  #  write.csv(data.frame(accesssions = gsms, treatment = titles, description = descriptions), 
-  #            paste(filename, "_" ,metaLabels[[i]], ".csv", sep = ""), append = FALSE )
-  # }
+
 
   #clean the directory
   suppressWarnings(sink())

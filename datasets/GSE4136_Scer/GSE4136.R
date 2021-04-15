@@ -8,6 +8,7 @@ library(limma)
 library(stats)
 library(dendextend)
 library(gplots)
+library(dplyr)
 source("microarray_functions.R")
 #This pulls the all the samples from the microarry dataset. This returns a list containing a single expressionSet object. 
 list.gse <- getGEO("GSE4136", GSEMatrix =TRUE, AnnotGPL=TRUE)
@@ -16,11 +17,66 @@ gse <- list.gse[[1]]
 
 #take a look into the dataset
 #head(gse)
-View(gse$title)
+#View(gse$title)
 #dim(gse)
 
 #here we format the feature names. fvarLabels belongs the biobase package and is used to extract features from ExpressionSet Objects
 fvarLabels(gse) <- make.names(fvarLabels(gse))
+
+#log2 transform
+ex <- exprs(gse)
+ex[which(ex <= 0)] <- NaN
+exprs(gse) <- log2(ex)
+
+levs <- c(rep("NG.5", 3), rep("NG.25",3),rep("MG.5",3), rep("MG.25",3))
+targets <- data.frame(cbind(GSE = gse$geo_accession, Target = levs))
+f <- factor(targets$Target, levels = unique(levs))
+design <- model.matrix(~0+f)
+colnames(design) <- unique(levs)
+fit <- lmFit(gse, design)
+
+
+
+#5th gen
+cont.dif.5 <- makeContrasts(
+  Dif5 = MG.5 - NG.5,
+  
+  
+  levels = design
+)
+contrasts.fit <- contrasts.fit(fit, contrasts = cont.dif.5)
+
+fit2 <- eBayes(contrasts.fit, 0.01)
+g.tT5 <- topTable(fit2, adjust.method = "fdr", confint = TRUE, number = Inf)
+
+ses <- topTable.SE(g.tT5)
+prob <- sapply(g.tT5$B, plogis)
+
+
+
+#25th gen
+cont.dif.25 <- makeContrasts(
+  Dif25 = MG.25 - NG.25,
+  levels = design
+)
+
+contrasts.fit <- contrasts.fit(fit, contrasts = cont.dif.25)
+fit2 <- eBayes(contrasts.fit, 0.01)
+g.tT25 <- topTable(fit2, adjust.method = "fdr", confint = TRUE, number = Inf)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #5th gen groups

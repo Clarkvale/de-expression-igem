@@ -1,5 +1,6 @@
 [1] "ORGANISM: Arabidopsis thaliana"
 [1] "MICROGRAVITY TYPE: SPACEFLOWN"
+[1] "CELL TYPE: Shoots of seedlings"
 Experiment data
   Experimenter name: NASA,,GeneLab 
   Laboratory:  
@@ -51,13 +52,13 @@ Microgravity/Weightlessness
    submission_date:     
       Oct 17 2017
    summary:     
-      These investigations studied the fundamentals of how plants perceive gravity and develop in microgravity. It informs how gene regulatio
-n is altered by spaceflight conditions.
+      These investigations studied the fundamentals of how plants perceive gravity and develop in microgravity. It info
+rms how gene regulation is altered by spaceflight conditions.
    supplementary_file:     
       ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE105nnn/GSE105058/suppl/GSE105058_RAW.tar
    title:     
-      Biological Research in Canisters-16 (BRIC-16): Investigations of the plant cytoskeleton in microgravity with gene profiling and cytoche
-mistry
+      Biological Research in Canisters-16 (BRIC-16): Investigations of the plant cytoskeleton in microgravity with gene
+ profiling and cytochemistry
    type:     
       Expression profiling by array
    web_link:     
