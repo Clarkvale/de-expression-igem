@@ -15,7 +15,7 @@ Everytime you make a new R script you'll need to be working out of the project d
 
 Now we need to load up our packages and functions
 
-```{r, echo= FALSE}
+```{r, echo= FALSE, message=FALSE}
 library(GEOquery)
 library(Biobase)
 library(limma)
@@ -51,7 +51,11 @@ gse$description
 
 gse$scan_protocol[[1]]
 
+gse$channel_count[[1]]
+
 ```
+The last one tells us how many colours were being used for the array. In this case only one colour was hybridized, meaning that in order to find the difference between treatments, two chips were used between the replicates. There are many cases where two colours are used and I'll come back to that later.
+
 What does our expression data look like anyways?
 ```{r}
 head(exprs(gse))
@@ -231,7 +235,27 @@ That was alot! Let's just check what ended up with:
 ```{r echo=TRUE}
 head(pull.output.tT(g.tT5))
 ```
+## Limma 2 Channel Example
 
+A two channel array means that both your null sample and your treated sample are passed over the same chip but hybridized with different colours. Fortunately Limma doesn't care and the only thing you need to change is the new design matrix. Here's and example where the researchers swapped the dyes to model possible hybridization bias: 
+
+```{r message=FALSE}
+gse3 <- getGEO("GSE50881", GSEMatrix =TRUE, AnnotGPL=TRUE)[[1]]
+
+fvarLabels(gse3) <- make.names(fvarLabels(gse3))
+
+#Limma really wants you to have 'Cy3' and 'Cy5' as column names if you have more than one. These names reference the dyes commonly used.
+targets <- data.frame(cbind(GSE = gse$geo_accession, Cy3 = gse3$`growth condition:ch1`, Cy5 = gse3$`growth condition:ch2`))
+
+
+design <- modelMatrix(targets, ref = "ground-based control condition")
+design <- cbind(design, DyeEffect = 1)
+
+fit <- lmFit(gse3,design)
+fit <- eBayes(fit, 0.01)
+
+topTable(fit, coef = "spaceflight condition")
+```
 
 The last thing we need to do is print out some metadata. There are two files for each comparison we made, a text file which dumps all the study info and another csv file which describes the comparisons we made. Big warning on this one: the function I made is not very stable. This is probably because I over-engineered it (oops). The idea is that you can give it all the info and it makes all those files at once. If it whines it probably means you need to twist the inputs into something it likes.
 ```{r eval=FALSE}
