@@ -47,13 +47,100 @@ out_tT <- tT %>% dplyr::select(adj.P.Val, P.Value, t, B, logFC, GENE_SYMBOL,
 
 
 db <- org.Ce.eg.db
-#gos <- select(db, keys = as.character(out_tT$Entrez.ID), keytype= "ENTREZID", columns= c("GO", "ONTOLOGY"))
+gos <- select(db, keys = as.character(out_tT$Entrez.ID), keytype= "ENTREZID", columns= c("GO", "ONTOLOGY"))
+
+
+
+
 
 mapped.gos <- org.Ce.egGO
 mapped.gos <- as.list(mapped.gos)
 
-go.db <- as.list(GO.db::GOTERM)
-anno.go.genome <- function(go.ids){
+compress.ids <- function(entrezid, go.matrix){
+  lines <- go.matrix %>% filter(ENTREZID == entrezid)
+  cc <- lines %>% filter(ONTOLOGY == "CC")
+  bp <- lines %>% filter(ONTOLOGY == "BP")
+  mf <- lines %>% filter(ONTOLOGY == "MF")
+  
+  return(list(cc.go = paste(unique(cc$GO), collapse = "///"), 
+              cc.term = paste(unique(cc$TERM), collapse = "///"),
+              bp.go = paste(unique(bp$GO), collapse = "///"),
+              bp.term = paste(unique(bp$TERM), collapse = "///"),
+              mf.go = paste(unique(mf$GO), collapse = "///"),
+              mf.term = paste(unique(mf$TERM), collapse = "///")))
+}
+
+make.vector <- function(index, list, name){
+  return(list[[index]][[name]])
+}
+
+get.GOs <- function(TopTable, org.database, Entrez.name){
+  gos <- select(db, keys = as.character(TopTable[[Entrez.name]]), keytype= "ENTREZID", columns= c("GO", "ONTOLOGY"))
+  u.ids <- as.numeric(unique(gos$ENTREZID))
+  TERM <- apply(FUN = Term, as.array(gos$GO), MARGIN = 1)
+  gos <- cbind(gos, TERM)
+  
+  
+  listed.gos <- lapply(u.ids, FUN = compress.ids, go.matrix = gos)
+  vnames <- c("cc.go", "cc.term", "bp.go", "bp.term", "mf.go", "mf.term")
+  
+  df_out <- data.frame(u.ids)
+  
+  for(i in 1:length(vnames)){
+    df_out <- cbind(df_out,  sapply(1:length(u.ids), FUN = make.vector, list = listed.gos, name = vnames[i]))
+    
+  }
+  
+  colnames(df_out) <- append("Entrez.id", vnames)
+  return(df_out)
+  
+  ##adding null columns
+  # TopTable <- TopTable %>% dplyr::mutate(GO.Function = rep(NA, length(rownames(TopTable))), GO.Function.ID = rep(NA, length(rownames(TopTable))),
+  #                         GO.Component = rep(NA, length(rownames(TopTable))), GO.Component.ID = rep(NA, length(rownames(TopTable))),
+  #                         GO.Process = rep(NA, length(rownames(TopTable))), GO.Process.ID = rep(NA, length(rownames(TopTable))))
+  # 
+  # #throwing stuff into lists
+  # mapped.gos <- as.list(org.egGO)
+  # go.db <- as.list(GO.db::GOTERM)
+  # db.names <- as.list(org.egSYMBOL)
+  # 
+  # go.dataframes <- dataframe.go.genome(mapped.gos)
+  # valid_ind <- match(names(go.dataframes), out_tT[Entrez.name])
+  # 
+  # for(i in 1:length(names(go.dataframes))){
+  #   if(!is.na(valid_ind[i])){
+  #     
+  #     if((!is.null(go.dataframes[[i]]$ontology))){  
+  #       go_entry <- go.dataframes[[i]]
+  #       
+  #       TopTable <- add.go.tT(TopTable, go_entry, i)
+  #     }
+  #     else{
+  #       next
+  #     }
+  #   }
+  #   else{
+  #     if((!is.null(go.dataframes[[i]]$ontology))){
+  #       go_entry <- go.dataframes[[i]]
+  #       ided.rows <- grep(TopTable[Entrez.name], pattern = names(go.dataframes)[i])
+  #       out_tT <- add.go.tT(TopTable, goTable = go_entry, pos = ided.rows)
+  #     }
+  #     
+  #   }
+  #   
+  # }
+  # return(TopTable)
+  # 
+  
+  
+  
+}
+
+
+
+
+dataframe.go.genome <- function(go.ids){
+  go.db <- as.list(GO.db::GOTERM)
   out <- list()
   for(i in 1:length(go.ids)){
     line_ids <- names(go.ids[[i]])
@@ -80,7 +167,7 @@ anno.go.genome <- function(go.ids){
 #names(go.list) <- gos$GO
 
 go.genome <- anno.go.genome(mapped.gos)
-#valid_ind <- match(names(go.genome), out_tT$Entrez.ID)
+valid_ind <- match(names(go.genome), out_tT$Entrez.ID)
 
 ce.names <- as.list(org.Ce.egSYMBOL)
 

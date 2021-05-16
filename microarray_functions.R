@@ -114,12 +114,12 @@ pull.output.tT <- function(tT){
   out_tT <- tT %>% dplyr::select(adj.P.Val, P.Value, t, B, logFC, Gene.symbol, 
                                  Gene.title, Platform_ORF, GO.Function, GO.Function.ID,
                                  GO.Process, GO.Process.ID, GO.Component, GO.Component.ID,
-                                 Chromosome.annotation, ID, Gene.ID) %>% 
+                                 Chromosome.annotation, Gene.ID) %>% 
     
     dplyr::mutate(Standard.Error = ses, Probablity = prob) %>%
     dplyr::rename(Entrez.ID = Gene.ID)
   
-  out_tT <- remove.controls(out_tT)$TopTable
+  #out_tT <- remove.controls(out_tT)$TopTable
   return(out_tT)
   
 }
