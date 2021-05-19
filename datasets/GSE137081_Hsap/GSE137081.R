@@ -44,7 +44,7 @@ fit2 <- eBayes(fit)
 tT <- topTable(fit2, coef = "TreatNG", confint = T, number = Inf)
 
 #setting up metadata extraction
-gse <- getGEO("GSE137081")
+gse <- getGEO("GSE137081", GSEMatrix = FALSE)
 gsms <- names(gse@gsms)[-c(7:12)]
 colnames(counts) <- gsms
 miame <- MIAME(name = gse@header$name, lab = gse@header$contact_address, 
