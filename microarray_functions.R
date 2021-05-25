@@ -49,12 +49,16 @@ logcheck <- function(expression_matrix){
 }
 
 #Extracts metadata from your analysis. Will print a txt file for the whole study
-#as well as annotated design matrices in tabulated format. 'contrasts' MUST be in list for this to work 
+#as well as annotated design matrices in tabulated format. 'contrasts' can be in a list
 extractMetaData <- function(gse, design, contrasts,  filename, microgravity_type, 
-                            metaLabels, strain = "", cellType = "", description_label = NA){
+                            metaLabels = c(""), strain = "", cellType = "", description_label = NA){
   if(!is(microgravity_type, "character")){
     e <- simpleError("Not a valid microgravity type")
     stop(e)
+  }
+  
+  if(!is.list(contrasts)){
+    contrast <- list(contrasts)
   }
   
   
@@ -229,6 +233,8 @@ get.GOs <- function(TopTable, org.database, Entrez.name){
   }
   
   colnames(df_out) <- append("Entrez.id", vnames)
+  df_out <- df_out %>% rename(GO.Function = mf.term, GO.Function.ID = mf.go, GO.Process = bp.term, GO.Process.ID = bp.go, GO.Component = cc.term, GO.Component.ID = cc.go)
+  
   return(df_out)
   
   
