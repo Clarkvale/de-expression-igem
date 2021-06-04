@@ -49,12 +49,16 @@ logcheck <- function(expression_matrix){
 }
 
 #Extracts metadata from your analysis. Will print a txt file for the whole study
-#as well as annotated design matrices in tabulated format. 'contrasts' MUST be in list for this to work 
+#as well as annotated design matrices in tabulated format. 'contrasts' can be in a list
 extractMetaData <- function(gse, design, contrasts,  filename, microgravity_type, 
-                            metaLabels, strain = "", cellType = "", description_label = NA){
+                            metaLabels = c(""), strain = "", cellType = "", description_label = NA){
   if(!is(microgravity_type, "character")){
     e <- simpleError("Not a valid microgravity type")
     stop(e)
+  }
+  
+  if(!is.list(contrasts)){
+    contrast <- list(contrasts)
   }
   
   
@@ -186,6 +190,54 @@ remove.controls <- function(topTable){
   passed.probes <- which(topTable$Platform_ORF != "")
   f.topTable <- topTable[passed.probes,]
   return(list(TopTable = f.topTable, failed.probes = failed.probes))
+}
+
+.compress.ids <- function(entrezid, go.matrix){
+  lines <- go.matrix %>% filter(ENTREZID == entrezid)
+  cc <- lines %>% filter(ONTOLOGY == "CC")
+  bp <- lines %>% filter(ONTOLOGY == "BP")
+  mf <- lines %>% filter(ONTOLOGY == "MF")
+  
+  return(list(cc.go = paste(unique(cc$GO), collapse = "///"),
+              cc.term = paste(unique(cc$TERM), collapse = "///"),
+              bp.go = paste(unique(bp$GO), collapse = "///"),
+              bp.term = paste(unique(bp$TERM), collapse = "///"),
+              mf.go = paste(unique(mf$GO), collapse = "///"),
+              mf.term = paste(unique(mf$TERM), collapse = "///")))
+}
+
+.make.vector <- function(index, list, name){
+  return(list[[index]][[name]])
+}
+
+get.GOs <- function(TopTable, org.database, Entrez.name){
+  require(GO.db)
+  
+  if(is.null(TopTable[[Entrez.name]])){
+    stop("Invalid ID vector. Use a column with Entrez IDs.")
+  }
+  gos <- AnnotationDbi::select(org.database, keys = as.character(TopTable[[Entrez.name]]), keytype= "ENTREZID", columns= c("GO", "ONTOLOGY"))
+  u.ids <- as.numeric(unique(gos$ENTREZID))
+  TERM <- apply(FUN = Term, as.array(gos$GO), MARGIN = 1)
+  gos <- cbind(gos, TERM)
+  
+  
+  listed.gos <- lapply(u.ids, FUN = .compress.ids, go.matrix = gos)
+  vnames <- c("cc.go", "cc.term", "bp.go", "bp.term", "mf.go", "mf.term")
+  
+  df_out <- data.frame(u.ids)
+  
+  for(i in 1:length(vnames)){
+    df_out <- cbind(df_out,  sapply(1:length(u.ids), FUN = .make.vector, list = listed.gos, name = vnames[i]))
+    
+  }
+  
+  colnames(df_out) <- append("Entrez.id", vnames)
+  df_out <- df_out %>% rename(GO.Function = mf.term, GO.Function.ID = mf.go, GO.Process = bp.term, GO.Process.ID = bp.go, GO.Component = cc.term, GO.Component.ID = cc.go)
+  
+  return(df_out)
+  
+  
 }
 
 
