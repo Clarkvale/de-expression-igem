@@ -58,7 +58,7 @@ extractMetaData <- function(gse, design, contrasts,  filename, microgravity_type
   }
   
   if(!is.list(contrasts)){
-    contrast <- list(contrasts)
+    contrasts <- list(contrasts)
   }
   
   
@@ -240,6 +240,30 @@ get.GOs <- function(TopTable, org.database, Entrez.name){
   
 }
 
-
+getGEOFromRMA <- function(GSEString){
+  require(RCurl)
+  require(affy)
+  require(GEOquery)
+  
+  url <- sprintf("https://www.ncbi.nlm.nih.gov/geo/download/?acc=%s&format=file", GSEString)
+  
+  path <- list.dirs("datasets/")[grep(list.dirs("datasets/"), pattern = GSEString)]
+  
+  tf <- tempfile()
+  download.file(url, tf ,method="libcurl", mode = "wb")
+  
+  untar(tf, compressed = T, exdir = sprintf("%s//raw", path))
+  
+  gse <- getGEO(GSEString, GSEMatrix = T, AnnotGPL = T)[[1]]
+  
+  data <- ReadAffy(celfile.path =  sprintf("%s//raw", path)) 
+  rma.data <- exprs(rma(data)) 
+  
+  colnames(rma.data) <- gse$geo_accession
+  exprs(gse) <- rma.data
+  return(gse)
+  
+  
+}
   
 
