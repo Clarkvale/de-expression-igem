@@ -233,10 +233,20 @@ get.GOs <- function(TopTable, org.database, Entrez.name){
   }
   
   colnames(df_out) <- append("Entrez.id", vnames)
-  df_out <- df_out %>% rename(GO.Function = mf.term, GO.Function.ID = mf.go, GO.Process = bp.term, GO.Process.ID = bp.go, GO.Component = cc.term, GO.Component.ID = cc.go)
+  df_out <- df_out %>% dplyr::rename(GO.Function = mf.term, GO.Function.ID = mf.go, 
+                              GO.Process = bp.term, GO.Process.ID = bp.go, 
+                              GO.Component = cc.term, GO.Component.ID = cc.go)
   
   return(df_out)
   
+  
+}
+
+filterByCPM <- function(normFactors){
+  cutoff <- (10/min(normFactors$samples$lib.size)) * 10^06
+  drop <- which(apply(cpm(normFactors), 1, max) < cutoff)
+  d <- normFactors[-drop,] 
+  return(d)
   
 }
 
